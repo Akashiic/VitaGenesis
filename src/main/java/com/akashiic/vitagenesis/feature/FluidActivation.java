@@ -1,4 +1,4 @@
-package com.akashiic.vitagenesis.light;
+package com.akashiic.vitagenesis.feature;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -12,14 +12,14 @@ import com.akashiic.bellow.api.BellowAPI;
 /**
  * Starts the fluids of a deep chunk that 1.18 would have given a fluid tick: still water and lava sources with open air
  * beside or below them (springs, aquifer and pool edges). They get the neighbour notification that makes a still fluid
- * flow in vanilla ({@code BlockStaticLiquid.onNeighborBlockChange}), from the light stage, when the chunks around are
- * loaded and the resulting block and light updates are not skipped.
+ * flow in vanilla ({@code BlockStaticLiquid.onNeighborBlockChange}), from {@code onLit}: after Below Core's light
+ * stage, when the 5x5 chunks around are loaded and decorated, so the resulting block and light updates are not skipped.
  */
-final class FluidActivation {
+public final class FluidActivation {
 
     private FluidActivation() {}
 
-    static void run(WorldServer world, Chunk chunk, int minY) {
+    public static void run(WorldServer world, Chunk chunk, int minY) {
         int bx = chunk.xPosition << 4;
         int bz = chunk.zPosition << 4;
         for (int sy = minY >> 4; sy < 0; sy++) {

@@ -3,11 +3,11 @@ package com.akashiic.vitagenesis;
 /** Time spent in each stage of the cave generator since the server started (main thread only). */
 public final class GenStats {
 
-    public static final String[] STAGES = { "terrain", "decoration", "light" };
+    public static final String[] STAGES = { "terrain", "decoration", "fluids" };
 
     public static final int TERRAIN = 0;
     public static final int DECORATION = 1;
-    public static final int LIGHT = 2;
+    public static final int FLUIDS = 2;
 
     private static final long[] NANOS = new long[STAGES.length];
     private static final long[] CALLS = new long[STAGES.length];

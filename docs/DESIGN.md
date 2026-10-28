@@ -16,7 +16,7 @@ aceita `minY..-1`. As cavernas ainda se fecham antes de Y 0 (§4.4), então nunc
 
 ## 2. Integração com o Below Core
 
-O VitaGenesis é um `IDeepGenerator` registrado em `BellowAPI.registerGenerator` (API ≥ 2, conferida em tempo de
+O VitaGenesis é um `IDeepGenerator` registrado em `BellowAPI.registerGenerator` (API ≥ 3, conferida em tempo de
 execução com `BellowAPI.apiVersion()`). Ele compila contra o `-api.jar` do Below Core: nada fora do pacote
 `com.akashiic.bellow.api` fica visível. A ordem por chunk espelha a 1.18 (ruído e carvers, depois features):
 
@@ -26,10 +26,17 @@ execução com `BellowAPI.apiVersion()`). Ele compila contra o `-api.jar` do Bel
 | `generateTerrain` | cavernas por ruído, aquíferos, veios de ferro, carvers (§3–§6) | só o chunk | `NOISE`, `CARVERS` |
 | minérios do Below Core (respeitam o ar escavado: `discardChanceOnAirExposure`) | — | 3×3 | `FEATURES`/ores |
 | `decorate` | recursos de caverna (§8) | 3×3 | `FEATURES` |
-| `onDecorated` | luz e fluidos, quando os 5×5 estão decorados (§9) | 5×5 | `LIGHT` |
+| etapa de luz do Below Core, quando os 5×5 estão decorados | — | 5×5 | `LIGHT` |
+| `onLit` | fluidos com lado aberto começam a escorrer (§9) | 5×5 | *fluid ticks* |
 
-Cada etapa roda uma vez por chunk. Chunks cujo subsolo foi gerado antes de o VitaGenesis existir nunca chegam ao
-`generateTerrain` dele, então ele não escava onde jogadores possam ter construído.
+Cada etapa roda uma vez por chunk, e o Below Core grava com o chunk o que cada gerador já fez: uma etapa que não pôde
+rodar antes de o chunk descarregar (ou de o servidor parar) roda na próxima carga. Chunks cujo subsolo foi gerado antes
+de o VitaGenesis existir nunca chegam a ele, então ele não escava onde jogadores possam ter construído. Mesmo num
+chunk que chega ao `generateTerrain` (retrogen), só é escavado o bloco de preenchimento do Below Core e a pedra base
+(`BellowAPI.isDeepFill`/`isBaseStone`); o resto foi posto por jogadores ou mods.
+
+O `version()` do gerador leva a configuração do terreno: o Below Core grava a versão por dimensão e avisa no log quando
+ela muda entre sessões (chunks novos não casariam com os antigos nas bordas).
 
 O estágio de terreno é função pura da semente, da posição do chunk e da configuração. Ele toca só o chunk e escreve
 direto nas seções profundas, então as bordas casam em qualquer ordem de geração (medido: vizinhos concordam 99,3%
@@ -151,47 +158,34 @@ diferentes de −64, como o Below Core faz com os minérios.
 | | `large_dripstone` (gotejamento) | com vento; só em ar, água ou lava |
 | UNDERGROUND_STRUCTURES | `monster_room_deep` (4 tentativas) | mobs e loot do pack via `DungeonHooks`/`ChestGenHooks`; baú virado para fora da parede |
 | UNDERGROUND_ORES | `underwater_magma` | os minérios são do Below Core |
+| | `ore_clay` (cavernas verdejantes: 46, `uniform(bottom, 256)`, tamanho 33) | pelo `IDeepRegion.placeBlob` do Below Core (o mesmo `OreFeature` dos minérios dele), filtro de bioma na origem |
 | UNDERGROUND_DECORATION | `glow_lichen` | busca de até 20 blocos (a intenção do `searchRange`; a 1.18.2 retesta o vizinho, versões seguintes andam); faces no TileEntity do EFR (`State`, bit `1 << ForgeDirection`); o espalhamento vira uma segunda face no mesmo bloco |
 | | `dripstone_cluster`, `pointed_dripstone` | metas do EFR: 0..4 para baixo (ponta, frustum, meio, base, fusão), 5..9 para cima, pela mesma regra do `setState` do EFR (base só com 4+ de altura), para nenhuma atualização de vizinho trocar a textura; sem waterlogging no EFR, só em ar |
-| FLUID_SPRINGS | `spring_water`, `spring_lava` | a fonte começa a escorrer no estágio de luz (§9) |
+| FLUID_SPRINGS | `spring_water`, `spring_lava` | a fonte começa a escorrer no `onLit` (§9) |
 | VEGETAL_DECORATION | musgo no teto com cipós, `cave_vines`, `lush_caves_clay`, musgo no chão com vegetação, `vines` | comprimentos dos cipós como os `WeightedListInt` da 1.18 (0..19 ×2, 0..2 ×3, 0..6 ×10; no musgo 0..3 ×5, 1..7 ×1), sempre com um bloco livre embaixo; glow berries em 1/5; `MaxLength` do cipó = comprimento + o que a idade 23..25 de 25 deixa crescer; dripleaf, spore blossom e azaleia enraizada não existem no EFR |
 
 Fora por falta de blocos no EFR 2.6.59: Ancient City, Deep Dark (só há sculk e catalisador), dripleaf, spore blossom,
-raízes pendentes / terra enraizada, axolotl, glow squid. O `ore_clay` das cavernas verdejantes também ficou fora: ele
-precisaria do `OreFeature`, que hoje é interno do Below Core. Em vez de duplicar código, a sugestão é expô-lo na API
-do Below Core numa próxima versão; as poças e manchas de argila já existem.
+raízes pendentes / terra enraizada, axolotl, glow squid.
 
 ## 9. Luz e fluidos
 
 O terreno e a decoração escrevem sem luz: rodam com a vizinhança parcialmente carregada, onde o
-`World.updateLightByType` vanilla desistiria em silêncio. Um chunk é iluminado quando os 5×5 em volta estão
-carregados e decorados. Daí em diante nenhum gerador escreve no 3×3 que a luz dele alcança, porque uma decoração
-escreve no máximo a um chunk do seu.
+`World.updateLightByType` vanilla desistiria em silêncio. A luz é a etapa do Below Core (API 3): depois do tick do
+mundo, quando os 5×5 em volta de um chunk estão carregados e decorados, ele ilumina as fontes de luz do subsolo do
+chunk (lava, líquen, glow berries, ametista, magma) pela regra do `World`, reenvia as seções e chama o `onLit` de cada
+gerador que decorou o chunk. Daí em diante nenhuma decoração escreve no 3×3 em volta, e escritas pelo `World` atualizam
+luz e vizinhos normalmente. Um chunk que descarrega antes disso fica com a luz pendente gravada e é iluminado numa
+carga futura, inclusive depois de reiniciar o servidor. O self-test confere a luz do Below Core contra o motor
+vanilla (recalcular células em volta das fontes não muda nenhum valor).
 
-Um preenchimento por inundação (`DeepLighting.Flood`) parte das fontes do chunk (lava, líquen, glow berries, ametista,
-magma) e aplica a regra exata do `World.computeLightValue`: `max(emissão, vizinho − max(1, opacidade))`, com emissores
-opacos deixando a luz entrar. A inundação só aumenta valores, então a luz das fontes de cada chunk soma à de todos, em
-qualquer ordem.
+No `onLit`, fontes de água e lava paradas com ar ao lado ou embaixo recebem a notificação de vizinho que faz um fluido
+parado escorrer no vanilla (`FluidActivation`). Isso cobre nascentes e bordas de aquíferos, como o *fluid tick* da
+1.18. O `onLit` roda fora de qualquer carga de chunk, com o orçamento por tick do Below Core.
 
-As seções alteradas são reenviadas aos jogadores (`BellowAPI.resendDeepSections`), e a marca "iluminado" vai para o
-NBT do chunk (`Level.VitaGenesis`), então cada chunk é iluminado uma única vez. Valores dinâmicos de luz e opacidade
-(métodos do Forge sobrescritos, por exemplo nos cipós do EFR) são consultados por posição; os demais usam o valor fixo.
-
-**Fila no fim do tick.** O estágio é tentado quando um chunk é decorado e também quando um chunk já decorado volta do
-disco. Nos dois casos o chunk só entra numa fila, processada depois do tick do mundo, fora de qualquer carregamento:
-uma carga de chunk pode acontecer no meio de qualquer coisa (um jogador colocando bloco com os snapshots do Forge
-ligados, que reverteriam as escritas; um gerador com `scheduledUpdatesAreImmediate`, em que o fluido ativado escorreria
-recursivamente). A fila tem orçamento de 10 ms por tick do mundo; uma falha num chunk (bloco de outro mod) vai para o
-log, não derruba o servidor, e o chunk fica sem a marca até voltar à fila. As seções iluminadas são reenviadas uma vez
-por chunk no fim do processamento. Sem a re-tentativa, um chunk cujo 5×5 foi completado com um vizinho descarregado
-(jogador que vai embora, pré-gerador varrendo o mapa) ficaria sem luz para sempre.
-
-**Só chunks do VitaGenesis.** O estágio exige uma marca persistente (`Ours`), gravada quando o VitaGenesis decora o
-chunk. Um chunk decorado pelo Below Core sem o VitaGenesis (antes da instalação) pode ter construções, fluidos parados
-inclusive, e é deixado como está.
-
-No mesmo momento, fontes de água e lava paradas com ar ao lado ou embaixo recebem a notificação de vizinho que faz um
-fluido parado escorrer no vanilla. Isso cobre nascentes e bordas de aquíferos, como o *fluid tick* da 1.18.
+**Só chunks que o VitaGenesis decorou.** O Below Core chama os geradores registrados mesmo quando estão desligados na
+configuração; por isso o `decorate` grava uma marca nos dados do gerador no chunk (`BellowAPI.getGeneratorData`), e o
+`onLit` só ativa fluidos com ela. Um chunk decorado com o VitaGenesis desligado pode ter construções (fluidos parados
+inclusive) e é deixado como está; o controle negativo do self-test (sem a marca) reprova.
 
 ## 10. Testes
 

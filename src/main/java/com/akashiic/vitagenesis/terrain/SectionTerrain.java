@@ -3,7 +3,6 @@ package com.akashiic.vitagenesis.terrain;
 import java.util.BitSet;
 
 import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
@@ -38,11 +37,11 @@ public final class SectionTerrain implements DeepCaves.Chunk {
         ExtendedBlockStorage ebs = this.section(y);
         if (ebs == null) return OTHER;
         Block b = ebs.getBlockByExtId(lx, y & 15, lz);
-        Material m = b.getMaterial();
-        if (m == Material.air || m.isLiquid()) return OTHER;
         if (b == Blocks.bedrock) return y == this.minY ? OTHER : BEDROCK;
         if (this.veins.get(this.index(lx, y, lz))) return VEIN;
-        return b.hasTileEntity(ebs.getExtBlockMetadata(lx, y & 15, lz)) ? OTHER : FILL;
+        // carve only what Below Core filled the layer with: on retrogen, anything else was put there by players or mods
+        int meta = ebs.getExtBlockMetadata(lx, y & 15, lz);
+        return BellowAPI.isDeepFill(b, meta) || BellowAPI.isBaseStone(b, meta) ? FILL : OTHER;
     }
 
     @Override

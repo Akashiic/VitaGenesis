@@ -6,7 +6,7 @@ Esta primeira parte traz as **cavernas da 1.18** para a camada profunda do [Belo
 (Y < 0), com os blocos do **Et Futurum Requiem**. Em um mundo já explorado, cada chunk antigo recebe o subsolo e as
 cavernas quando é carregado. **Nada acima de Y 0 é alterado.**
 
-Status: **beta** (`0.1.0-beta.1`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
+Status: **beta** (`0.1.0-beta.2`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## O que gera abaixo de Y 0
 
@@ -18,7 +18,7 @@ Status: **beta** (`0.1.0-beta.1`). Arquitetura, decisões e medições: [docs/DE
 | Veios de ferro | `OreVeinifier` | deepslate iron ore, raw iron block, tufo (EFR) |
 | Geodos de ametista | `GeodeFeature` | ametista, ametista em brotamento, brotos e cristais, calcita, basalto liso (EFR) |
 | Cavernas de gotejamento | `LargeDripstone`, `DripstoneCluster`, `PointedDripstone` | dripstone block, pointed dripstone (EFR) |
-| Cavernas verdejantes | vegetation patches, `cave_vines`, `vines` | musgo, tapete de musgo, azaleia (e florida), cipós com glow berries (EFR); argila, água, capim, vinhas |
+| Cavernas verdejantes | vegetation patches, `cave_vines`, `vines`, `ore_clay` | musgo, tapete de musgo, azaleia (e florida), cipós com glow berries (EFR); argila, água, capim, vinhas |
 | Líquen brilhante, magma submerso | `MultifaceGrowth`, `UnderwaterMagma` | glow lichen, magma (EFR) |
 | Masmorras profundas | `monster_room_deep` | spawner e baú com os mobs e o loot de masmorra do pack (Forge `DungeonHooks`/`ChestGenHooks`) |
 | Nascentes de água e lava | `SpringFeature` | água, lava |
@@ -35,7 +35,7 @@ cavernas são gerados.
 
 | | versão |
 |---|---|
-| Below Core | API ≥ 2 (`0.1.0-beta.2` ou mais novo) — obrigatório |
+| Below Core | API ≥ 3 (`0.1.0-beta.3` ou mais novo) — obrigatório |
 | Et Futurum Requiem | 2.6.59-GTNH testado — recomendado (sem ele: só cavernas, aquíferos, túneis e masmorras) |
 | GTNHLib | 0.11.40+ |
 
@@ -75,7 +75,7 @@ escavados depois: podem ter construções de jogadores. Por isso os dois entram 
 
 Mudanças valem para chunks gerados depois; chunks já gerados nunca são regerados. Mudar as opções de `caves` num
 mundo já explorado cria bordas que não casam (uma caverna cheia d'água ao lado de uma vazia pode inundá-la): o
-VitaGenesis guarda as opções usadas em `<mundo>/vitagenesis.txt` e avisa no log quando elas mudam.
+Below Core grava a versão do gerador (com essas opções) por dimensão e avisa no log quando ela muda.
 
 Com piso −16, a lava global da 1.18 (piso + 10) ocupa quase toda a camada; o comportamento pensado é para −64 ou mais
 fundo. Auditoria, testes no pack real e a checklist de limitações do Below Core: [docs/AUDIT.md](docs/AUDIT.md).
@@ -83,8 +83,8 @@ fundo. Auditoria, testes no pack real e a checklist de limitações do Below Cor
 ## Compilar e testar
 
 ```bash
-(cd ../BelowCore && VERSION=0.1.0-beta.2 ./gradlew build)   # o build usa os jars do Below Core ao lado
-VERSION=0.1.0-beta.1 ./gradlew build                        # jar em build/libs (com testes unitários)
+(cd ../BelowCore && VERSION=0.1.0-beta.3 ./gradlew build)   # o build usa os jars do Below Core ao lado
+VERSION=0.1.0-beta.2 ./gradlew build                        # jar em build/libs (com testes unitários)
 tools/selftest.sh -64                                       # servidor dedicado, 3 fases, piso -64
 tools/selftest.sh -128                                      # idem, piso -128
 tools/clienttest.sh                                         # cliente headless (xvfb-run; EGL/Mesa: libegl1 libegl-mesa0 libgles2)

@@ -6,6 +6,8 @@ import java.util.List;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 
+import com.akashiic.bellow.api.BellowAPI;
+
 import cpw.mods.fml.common.registry.GameRegistry;
 
 /**
@@ -107,8 +109,12 @@ public final class CaveBlocks {
         return true;
     }
 
-    /** Overworld base stone (1.18 {@code #base_stone_overworld}): stone and Et Futurum's stones, deepslate and tuff. */
+    /**
+     * Overworld base stone (1.18 {@code #base_stone_overworld}): stone and Et Futurum's stones, deepslate and tuff, and
+     * the block Below Core fills the deep layer with.
+     */
     public static boolean isBaseStone(Block b) {
-        return b == Blocks.stone || b != null && (b == deepslate || b == tuff || b == efrStone);
+        return b == Blocks.stone || b != null && (b == deepslate || b == tuff || b == efrStone)
+            || b != null && b == BellowAPI.getFillBlock();
     }
 }

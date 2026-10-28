@@ -163,6 +163,18 @@ public final class CaveFeatures {
             }
         }
 
+        // ore_clay (lush caves only): count 46, uniform(bottom, 256), clay over base stone, size 33
+        if (FeatureConfig.lushCaves && CaveBlocks.lush) {
+            Random r = this.random(cx, cz, 13);
+            int count = Placement.scaledCount(r, 46, minY, top);
+            for (int i = 0; i < count; i++) {
+                int x = bx + r.nextInt(16);
+                int z = bz + r.nextInt(16);
+                int y = Placement.uniform(r, minY, top);
+                if (y < 0 && biomes.at(x, z) == CaveBiomes.LUSH) region.placeBlob(r, x, y, z, 33, 0.0F, Blocks.clay, 0);
+            }
+        }
+
         // UNDERGROUND_DECORATION: glow lichen, dripstone clusters, pointed dripstone
         if (FeatureConfig.glowLichen && CaveBlocks.glowLichen != null) {
             Random r = this.random(cx, cz, 4);

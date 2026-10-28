@@ -28,7 +28,6 @@ import com.akashiic.vitagenesis.GenStats;
 import com.akashiic.vitagenesis.VitaGenesis;
 import com.akashiic.vitagenesis.feature.CaveBiomes;
 import com.akashiic.vitagenesis.feature.CaveFeatures;
-import com.akashiic.vitagenesis.light.DeepLighting;
 
 /**
  * Headless verification on a dedicated server ({@code tools/selftest.sh}), in separate JVMs:
@@ -135,8 +134,8 @@ public final class SelfTest {
             for (int dz = -radius; dz <= radius; dz++)
                 world.theChunkProviderServer.loadChunk(centre[0] + dx, centre[1] + dz);
         }
-        // the light stage runs after the world tick; the self test runs before the first tick
-        while (DeepLighting.processPending(world));
+        // Below Core runs the stages after decoration (light, onLit) after the world tick; the self test runs before
+        BellowAPI.runDeepStages(world);
     }
 
     private void full(WorldServer world, int minY) throws IOException {
@@ -187,7 +186,7 @@ public final class SelfTest {
         }
         this.seamSetup(world);
         this.notOurs(world);
-        this.line(GenStats.report() + " (light: per lit chunk)");
+        this.line(GenStats.report() + " (fluids: onLit, per lit chunk; the light stage itself is Below Core's)");
         world.theChunkProviderServer.saveChunks(true, null);
         StringBuilder sums = new StringBuilder();
         for (int[] area : areas) sums.append(area[0])
@@ -202,55 +201,61 @@ public final class SelfTest {
                 .getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * First half of the seam test: the centre of area E has its whole 5x5 decorated, and its lit mark is removed, as
-     * when its light stage could not run because a neighbour was unloaded at the time.
-     */
-    private void seamSetup(WorldServer world) {
-        load(world, AREA_E);
-        Chunk target = world.getChunkFromChunkCoords(AREA_E[0], AREA_E[1]);
-        this.check(DeepLighting.isLit(target), "seam set up: area E centre lit");
-        DeepLighting.forgetLitForTests(target);
+    /** Whether Below Core lit the chunk and called VitaGenesis' {@code onLit} on it. */
+    static boolean lit(Chunk c) {
+        return (BellowAPI.getGeneratorStages(c, VitaGenesis.GENERATOR_ID) & DeepConstants.STAGE_ON_LIT) != 0
+            && !BellowAPI.isLightPending(c);
     }
 
     /**
-     * Second half, in a new JVM: the 5x5 around the centre of E is loaded without its west neighbour, so the centre
-     * cannot be lit. The neighbour then comes back from disk already decorated, which decorates nothing: only the
-     * retry queue (fed by chunk loads) can light the centre.
+     * Chunk at the east edge of what area E decorates: decorated, but its 5x5 is not, so its light stage waits when
+     * the server stops.
+     */
+    private static int[] seamTarget() {
+        return new int[] { AREA_E[0] + LOADED - 1, AREA_E[1] };
+    }
+
+    /** First half of the seam test: the target is decorated and saved with its light stage pending. */
+    private void seamSetup(WorldServer world) {
+        load(world, AREA_E);
+        int[] t = seamTarget();
+        Chunk target = world.getChunkFromChunkCoords(t[0], t[1]);
+        this.check(
+            BellowAPI.isDecorated(target) && BellowAPI.isLightPending(target) && !lit(target),
+            "seam set up: chunk at the edge decorated, light stage pending");
+    }
+
+    /**
+     * Second half, in a new JVM: the target comes back from disk with its light pending; it is lit (and its fluids
+     * started) once the chunks east of it are generated and decorated, and not before.
      */
     private void seamReload(WorldServer world) {
-        int ex = AREA_E[0];
-        int ez = AREA_E[1];
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                if (dx != -2 || dz != 0) world.theChunkProviderServer.loadChunk(ex + dx, ez + dz);
-            }
-        }
-        while (DeepLighting.processPending(world));
-        Chunk target = world.getChunkFromChunkCoords(ex, ez);
-        boolean before = DeepLighting.isLit(target);
-        world.theChunkProviderServer.loadChunk(ex - 2, ez);
-        while (DeepLighting.processPending(world));
-        boolean after = DeepLighting.isLit(target);
+        int[] t = seamTarget();
+        load(world, t, 1);
+        Chunk target = world.getChunkFromChunkCoords(t[0], t[1]);
+        boolean before = lit(target);
+        load(world, t, 3);
+        boolean after = lit(target);
         this.check(
             !before && after,
-            "chunk lit once a decorated neighbour comes back from disk (lit before " + before
+            "chunk saved with its light pending lit once its 5x5 is decorated (lit before " + before
                 + ", after "
                 + after
                 + ")");
     }
 
     /**
-     * A chunk decorated by Below Core without VitaGenesis (before it was installed) may hold what players built: the
-     * light stage must leave it alone. Area F is generated with VitaGenesis off, a still water source is put next to
-     * an air room in it (as a player could), then the light stage runs on it with VitaGenesis on.
+     * A chunk decorated while VitaGenesis was off may hold what players built: its fluids must not be started. Area F
+     * is decorated with VitaGenesis off (its 5x5 not yet, so it is not lit), a still water source is put next to an
+     * air room in it (as a player could), then its 5x5 is decorated with VitaGenesis on, which lights it and calls
+     * {@code onLit}.
      */
     private void notOurs(WorldServer world) {
         int[] f = { -130, -130 };
         boolean enabled = CaveConfig.enabled;
         CaveConfig.enabled = false;
         try {
-            load(world, f, 4);
+            load(world, f, 2);
         } finally {
             CaveConfig.enabled = enabled;
         }
@@ -264,14 +269,16 @@ public final class SelfTest {
         }
         world.setBlock(x0 - 1, y0, z0, Blocks.water, 0, 2);
         Chunk centre = world.getChunkFromChunkCoords(f[0], f[1]);
-        DeepLighting.onDecorated(world, centre);
-        while (DeepLighting.processPending(world));
+        boolean before = lit(centre);
+        load(world, f, 4);
+        // a started source turns into flowing water (BlockStaticLiquid.setNotStationary)
         this.check(
-            world.getBlock(x0 - 1, y0, z0) == Blocks.water && !DeepLighting.isLit(centre),
-            "chunk decorated without VitaGenesis left alone by the light stage (water still: "
+            !before && lit(centre) && world.getBlock(x0 - 1, y0, z0) == Blocks.water,
+            "chunk decorated while VitaGenesis was off: lit, fluids left alone (lit before " + before
+                + ", after "
+                + lit(centre)
+                + ", water still: "
                 + (world.getBlock(x0 - 1, y0, z0) == Blocks.water)
-                + ", lit: "
-                + DeepLighting.isLit(centre)
                 + ")");
     }
 
@@ -324,7 +331,7 @@ public final class SelfTest {
             for (int dx = -MEASURED; dx <= MEASURED; dx++) {
                 for (int dz = -MEASURED; dz <= MEASURED; dz++) {
                     total++;
-                    if (DeepLighting.isLit(world.getChunkFromChunkCoords(area[0] + dx, area[1] + dz))) lit++;
+                    if (lit(world.getChunkFromChunkCoords(area[0] + dx, area[1] + dz))) lit++;
                 }
             }
         }
@@ -437,8 +444,8 @@ public final class SelfTest {
         for (int dx = -MEASURED; dx <= MEASURED; dx++) {
             for (int dz = -MEASURED; dz <= MEASURED; dz++) {
                 Chunk c = world.getChunkFromChunkCoords(area[0] + dx, area[1] + dz);
-                if (((IDeepChunk) c).bellow$getGenState() == DeepConstants.GEN_DECORATED) decorated++;
-                if (!DeepLighting.isLit(c)) notLit++;
+                if (BellowAPI.isDecorated(c)) decorated++;
+                if (!lit(c)) notLit++;
                 for (int y = minY; y < 0; y++) {
                     ExtendedBlockStorage ebs = BellowAPI.getDeepSection(c, y >> 4);
                     if (ebs == null) continue;

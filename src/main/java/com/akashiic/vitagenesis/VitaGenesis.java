@@ -1,17 +1,13 @@
 package com.akashiic.vitagenesis;
 
-import net.minecraftforge.common.MinecraftForge;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.akashiic.bellow.api.BellowAPI;
-import com.akashiic.vitagenesis.light.DeepLighting;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 
 import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
@@ -36,7 +32,8 @@ public class VitaGenesis {
     private final VitaGenerator generator = new VitaGenerator();
 
     /** Below Core API with deep generators. */
-    static final int REQUIRED_BELLOW_API = 2;
+    static final int REQUIRED_BELLOW_API = 3;
+    public static final String GENERATOR_ID = MODID + ":caves";
 
     static {
         try {
@@ -56,15 +53,6 @@ public class VitaGenesis {
     }
 
     @Mod.EventHandler
-    public void init(FMLInitializationEvent event) {
-        DeepLighting.Events events = new DeepLighting.Events();
-        MinecraftForge.EVENT_BUS.register(events);
-        cpw.mods.fml.common.FMLCommonHandler.instance()
-            .bus()
-            .register(events);
-    }
-
-    @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         int api;
         try {
@@ -80,19 +68,17 @@ public class VitaGenesis {
                     + "): update Below Core");
         }
         CaveBlocks.resolve();
-        BellowAPI.registerGenerator(MODID + ":caves", this.generator);
+        BellowAPI.registerGenerator(GENERATOR_ID, this.generator);
+    }
+
+    @Mod.EventHandler
+    public void serverStopped(FMLServerStoppedEvent event) {
+        this.generator.clearCaches();
     }
 
     /** Headless verification: {@code -Dvitagenesis.selftest=true [-Dvitagenesis.selftest.exit=true]}. */
     @Mod.EventHandler
-    public void serverStopped(FMLServerStoppedEvent event) {
-        this.generator.clearCaches();
-        DeepLighting.clear();
-    }
-
-    @Mod.EventHandler
     public void serverStarted(FMLServerStartedEvent event) {
-        WorldStamp.check();
         if (Boolean.getBoolean("vitagenesis.selftest")) com.akashiic.vitagenesis.selftest.SelfTest.start();
     }
 }
