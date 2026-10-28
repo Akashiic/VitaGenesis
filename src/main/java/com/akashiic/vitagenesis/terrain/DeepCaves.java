@@ -42,7 +42,7 @@ public final class DeepCaves {
         public boolean carvers = true;
         public boolean extraUndergroundCarver = true;
         /** Solid layers kept right below Y 0. */
-        public int seal = 1;
+        public int seal = 4;
         /** Blocks below the ceiling over which the caves close. */
         public int fade = 8;
 

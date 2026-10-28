@@ -50,6 +50,8 @@ public final class SelfTest {
     static final int MEASURED = LOADED - 3;
     static final int[] AREA_A = { 40, 40 };
     static final int[] AREA_B = { -60, 90 };
+    /** Area of the seam test, far from the other areas and from spawn. */
+    static final int[] AREA_E = { 120, -120 };
     static final String CHECKSUM_FILE = "vitagenesis-selftest-checksum.txt";
 
     private final List<String> lines = new ArrayList<>();
@@ -174,6 +176,8 @@ public final class SelfTest {
                 names[i] + " caves generated: " + count + " " + Block.blockRegistry.getNameForObject(markers[i]));
             areas.add(area);
         }
+        this.seamSetup(world);
+        this.notOurs(world);
         this.line(GenStats.report() + " (light: per decorated chunk, including the 5x5 check)");
         world.theChunkProviderServer.saveChunks(true, null);
         StringBuilder sums = new StringBuilder();
@@ -187,6 +191,78 @@ public final class SelfTest {
             new File(CHECKSUM_FILE).toPath(),
             sums.toString()
                 .getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * First half of the seam test: the centre of area E has its whole 5x5 decorated, and its lit mark is removed, as
+     * when its light stage could not run because a neighbour was unloaded at the time.
+     */
+    private void seamSetup(WorldServer world) {
+        load(world, AREA_E);
+        Chunk target = world.getChunkFromChunkCoords(AREA_E[0], AREA_E[1]);
+        this.check(DeepLighting.isLit(target), "seam set up: area E centre lit");
+        DeepLighting.forgetLitForTests(target);
+    }
+
+    /**
+     * Second half, in a new JVM: the 5x5 around the centre of E is loaded without its west neighbour, so the centre
+     * cannot be lit. The neighbour then comes back from disk already decorated, which decorates nothing: only the
+     * retry queue (fed by chunk loads) can light the centre.
+     */
+    private void seamReload(WorldServer world) {
+        int ex = AREA_E[0];
+        int ez = AREA_E[1];
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (dx != -2 || dz != 0) world.theChunkProviderServer.loadChunk(ex + dx, ez + dz);
+            }
+        }
+        DeepLighting.processPending(world);
+        Chunk target = world.getChunkFromChunkCoords(ex, ez);
+        boolean before = DeepLighting.isLit(target);
+        world.theChunkProviderServer.loadChunk(ex - 2, ez);
+        DeepLighting.processPending(world);
+        boolean after = DeepLighting.isLit(target);
+        this.check(
+            !before && after,
+            "chunk lit once a decorated neighbour comes back from disk (lit before " + before
+                + ", after "
+                + after
+                + ")");
+    }
+
+    /**
+     * A chunk decorated by Below Core without VitaGenesis (before it was installed) may hold what players built: the
+     * light stage must leave it alone. Area F is generated with VitaGenesis off, a still water source is put next to
+     * an air room in it (as a player could), then the light stage runs on it with VitaGenesis on.
+     */
+    private void notOurs(WorldServer world) {
+        int[] f = { -130, -130 };
+        boolean enabled = CaveConfig.enabled;
+        CaveConfig.enabled = false;
+        try {
+            load(world, f, 4);
+        } finally {
+            CaveConfig.enabled = enabled;
+        }
+        int x0 = (f[0] << 4) + 6;
+        int z0 = (f[1] << 4) + 6;
+        int y0 = -30;
+        for (int x = x0; x < x0 + 3; x++) {
+            for (int y = y0; y < y0 + 3; y++) {
+                for (int z = z0; z < z0 + 3; z++) world.setBlock(x, y, z, Blocks.air, 0, 2);
+            }
+        }
+        world.setBlock(x0 - 1, y0, z0, Blocks.water, 0, 2);
+        Chunk centre = world.getChunkFromChunkCoords(f[0], f[1]);
+        DeepLighting.onDecorated(world, centre);
+        this.check(
+            world.getBlock(x0 - 1, y0, z0) == Blocks.water && !DeepLighting.isLit(centre),
+            "chunk decorated without VitaGenesis left alone by the light stage (water still: "
+                + (world.getBlock(x0 - 1, y0, z0) == Blocks.water)
+                + ", lit: "
+                + DeepLighting.isLit(centre)
+                + ")");
     }
 
     /** The nearest area (from the origin) where at least half of a 5x5 sample of columns has the cave biome. */
@@ -243,6 +319,7 @@ public final class SelfTest {
             }
         }
         this.check(lit == total, "lit marks restored from disk: " + lit + "/" + total);
+        this.seamReload(world);
     }
 
     /** Checksum of blocks, metadata and block light of the measured chunks, below Y 0. */

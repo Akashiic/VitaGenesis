@@ -86,7 +86,10 @@ blocos dela, e o mundo de cima (1.7.10) não é lido; isso também mantém o est
 
 ### 4.4 Fechamento sob Y 0 (selo e esmaecimento)
 
-`seal` camadas logo abaixo de 0 ficam sempre sólidas (padrão 1). Nos `fade` blocos de baixo do selo (padrão 8), a
+`seal` camadas logo abaixo de 0 ficam sempre sólidas (padrão 4). O valor 4 vem do fogo da 1.7.10: o
+`BlockFire.updateTick` acende ar até 4 blocos acima **sem checar obstrução**. Com 4 camadas, fogo nas cavernas (lava
+junto de vinhas, musgo, azaleia) chega no máximo a Y −1 e nunca alcança o mundo de cima. A lava só acende fogo para
+cima até achar um bloco sólido. Nos `fade` blocos de baixo do selo (padrão 8), a
 densidade recebe `0,5·t²`, acima do menor valor que o roteador produz (o *squeeze* fica em ±0,458), e os elipsoides dos
 carvers encolhem na mesma proporção. As cavernas se fecham pelo contorno do ruído, sem teto plano em Y −1.
 
@@ -148,9 +151,9 @@ diferentes de −64, como o Below Core faz com os minérios.
 | UNDERGROUND_STRUCTURES | `monster_room_deep` (4 tentativas) | mobs e loot do pack via `DungeonHooks`/`ChestGenHooks`; baú virado para fora da parede |
 | UNDERGROUND_ORES | `underwater_magma` | os minérios são do Below Core |
 | UNDERGROUND_DECORATION | `glow_lichen` | busca de até 20 blocos (a intenção do `searchRange`; a 1.18.2 retesta o vizinho, versões seguintes andam); faces no TileEntity do EFR (`State`, bit `1 << ForgeDirection`); o espalhamento vira uma segunda face no mesmo bloco |
-| | `dripstone_cluster`, `pointed_dripstone` | metas do EFR: 0..4 para baixo (ponta, frustum, meio, base, fusão), 5..9 para cima; sem waterlogging no EFR, só em ar |
+| | `dripstone_cluster`, `pointed_dripstone` | metas do EFR: 0..4 para baixo (ponta, frustum, meio, base, fusão), 5..9 para cima, pela mesma regra do `setState` do EFR (base só com 4+ de altura), para nenhuma atualização de vizinho trocar a textura; sem waterlogging no EFR, só em ar |
 | FLUID_SPRINGS | `spring_water`, `spring_lava` | a fonte começa a escorrer no estágio de luz (§9) |
-| VEGETAL_DECORATION | musgo no teto com cipós, `cave_vines`, `lush_caves_clay`, musgo no chão com vegetação, `vines` | glow berries em 1/5; `MaxLength` do cipó = comprimento + o que a idade 23..25 de 25 deixa crescer; dripleaf, spore blossom e azaleia enraizada não existem no EFR |
+| VEGETAL_DECORATION | musgo no teto com cipós, `cave_vines`, `lush_caves_clay`, musgo no chão com vegetação, `vines` | comprimentos dos cipós como os `WeightedListInt` da 1.18 (0..19 ×2, 0..2 ×3, 0..6 ×10; no musgo 0..3 ×5, 1..7 ×1), sempre com um bloco livre embaixo; glow berries em 1/5; `MaxLength` do cipó = comprimento + o que a idade 23..25 de 25 deixa crescer; dripleaf, spore blossom e azaleia enraizada não existem no EFR |
 
 Fora por falta de blocos no EFR 2.6.59: Ancient City, Deep Dark (só há sculk e catalisador), dripleaf, spore blossom,
 raízes pendentes / terra enraizada, axolotl, glow squid. O `ore_clay` das cavernas verdejantes também ficou fora: ele
@@ -172,6 +175,15 @@ qualquer ordem.
 As seções alteradas são reenviadas aos jogadores (`BellowAPI.resendDeepSections`), e a marca "iluminado" vai para o
 NBT do chunk (`Level.VitaGenesis`), então cada chunk é iluminado uma única vez. Valores dinâmicos de luz e opacidade
 (métodos do Forge sobrescritos, por exemplo nos cipós do EFR) são consultados por posição; os demais usam o valor fixo.
+
+**Re-tentativa.** O estágio é tentado quando um chunk é decorado e também quando um chunk já decorado volta do
+disco. A tentativa vai para uma fila processada depois do tick do mundo, fora de qualquer carregamento. Sem isso, um
+chunk cujo 5×5 foi completado com um vizinho descarregado (jogador que vai embora, pré-gerador varrendo o mapa)
+ficaria sem luz para sempre.
+
+**Só chunks do VitaGenesis.** O estágio exige uma marca persistente (`Ours`), gravada quando o VitaGenesis decora o
+chunk. Um chunk decorado pelo Below Core sem o VitaGenesis (antes da instalação) pode ter construções, fluidos parados
+inclusive, e é deixado como está.
 
 No mesmo momento, fontes de água e lava paradas com ar ao lado ou embaixo recebem a notificação de vizinho que faz um
 fluido parado escorrer no vanilla. Isso cobre nascentes e bordas de aquíferos, como o *fluid tick* da 1.18.
@@ -200,29 +212,39 @@ fluido parado escorrer no vanilla. Isso cobre nascentes e bordas de aquíferos, 
 
 | piso | volume de cavernas A / B / C / D | luz reacesa pelo motor vanilla | releitura |
 |---|---|---|---|
-| −64 | 3,5% / 11,2% / 10,9% / 12,2% | 0 células mudaram | idêntica, 324/324 marcas |
-| −128 | 7,2% / 13,4% / 15,5% / 18,1% | 0 células mudaram | idêntica |
+| −64 | 3,2% / 10,8% / 3,6% / 11,9% | 0 de 25 110 células mudaram | idêntica, 324/324 marcas |
+| −128 | 7,1% / 13,3% / 4,5% / 17,6% | 0 células mudaram | idêntica, 324/324 marcas |
 
-A diferença entre A e B é espacial: o gerador puro, no teste unitário, reproduz os mesmos 3,4% e 11,2% nas mesmas
-coordenadas. Com isso, o caminho de retrogen e o de chunk novo são idênticos.
+A diferença entre as áreas é espacial (o ruído do queijo varia em escalas de centenas de blocos): o gerador puro, no
+teste unitário, reproduz exatamente o volume das áreas A e B nas mesmas coordenadas. Com isso, o caminho de retrogen e
+o de chunk novo são idênticos.
 
-Em −64, a área verdejante teve 10 136 blocos de musgo, 980 tapetes, 429 azaleias (158 floridas), cipós com berries
-em ~20%, 7 620 de argila e capim/vinhas. A de gotejamento teve 26 661 blocos de dripstone e ~4 400 pontas, com a
-distribuição de espessuras esperada.
+Em −64:
+- área verdejante (chunk −96, −66): 6 725 blocos de musgo, 360 tapetes, 159 azaleias (52 floridas), 419 pontas de
+  cipó com 632 trechos (~19% com berries), 3 710 de argila, capim e vinhas;
+- área de gotejamento: 24 372 blocos de dripstone e milhares de pontas.
+
+O self-test também prova as duas correções da revisão independente, e cada teste reprova com a correção desligada:
+- um chunk com o 5×5 completo e o estágio de luz pendente fica sem luz enquanto um vizinho decorado está no disco, e
+  acende quando esse vizinho volta;
+- uma sala com água parada num chunk decorado sem o VitaGenesis continua igual depois do estágio de luz.
 
 **Cliente headless** (`tools/clienttest.sh`, Xvfb + Mesa): um mundo singleplayer com a câmera dentro de uma caverna
-verdejante e de uma de gotejamento. Cliente e servidor têm os mesmos blocos, a mesma luz de bloco (0 de 5 733 células
-diferentes em cada área) e as mesmas faces de líquen (dados do TileEntity enviados com o chunk). Screenshots em
+verdejante e de uma de gotejamento. Cliente e servidor têm:
+- os mesmos blocos (0 de 5 733 diferentes);
+- a mesma luz de bloco: 0 e 15 de 5 733 células diferentes. A explicação mais provável para as 15 são fluidos
+  escorrendo entre o snapshot e a leitura; não verifiquei a causa (tolerância de 1%);
+- as mesmas faces de líquen (dados do TileEntity enviados com o chunk). Screenshots em
 `run/client/screenshots/`, com luz natural e com visão noturna.
 
-**Custo** medido no self-test em −64 (servidor dev, 1 532 chunks):
+**Custo** por chunk medido no self-test (servidor dev, ~1 760 chunks):
 
-| estágio | custo por chunk |
-|---|---|
-| terreno | 2,73 ms |
-| decoração | 1,01 ms |
-| luz (inclui a checagem dos 5×5) | 0,47 ms |
-| **total do VitaGenesis** | **≈ 4,2 ms** |
+| estágio | −64 | −128 |
+|---|---|---|
+| terreno | 2,56 ms | 4,08 ms |
+| decoração | 0,85 ms | 1,30 ms |
+| luz (inclui a checagem dos 5×5) | 0,40 ms | 0,75 ms |
+| **total do VitaGenesis** | **≈ 3,8 ms** | **≈ 6,1 ms** |
 
 Para comparação, o Below Core mediu ~11 ms por chunk de geração com a camada de −64. O estágio de terreno puro, no
 teste unitário, custa ~3,0 ms em −64 e ~3,5 ms em −128.

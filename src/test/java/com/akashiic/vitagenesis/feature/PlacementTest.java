@@ -53,4 +53,18 @@ class PlacementTest {
         assertTrue(centre > middle && middle > rim, centre + " " + middle + " " + rim);
         assertEquals(0.0D, rim, 0.05D);
     }
+
+    @Test
+    void caveVineLengthsFollowTheWeightedList() {
+        Random r = new Random(4L);
+        double sum = 0.0D;
+        int n = 300000;
+        for (int i = 0; i < n; i++) {
+            int v = Placement.weightedUniform(r, LushCaves.VINES);
+            assertTrue(v >= 0 && v <= 19);
+            sum += v;
+        }
+        // (2 * 9.5 + 3 * 1 + 10 * 3) / 15
+        assertEquals(52.0D / 15.0D, sum / n, 0.03D);
+    }
 }

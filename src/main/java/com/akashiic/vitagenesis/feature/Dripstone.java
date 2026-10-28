@@ -41,22 +41,24 @@ final class Dripstone {
         return lv.set(x, y, z, CaveBlocks.dripstoneBlock, 0);
     }
 
-    /** {@code growPointedDripstone}: a column of {@code height} from {@code y} towards {@code dy} (+1 up, -1 down). */
+    /**
+     * {@code growPointedDripstone}: a column of {@code height} from {@code y} towards {@code dy} (+1 up, -1 down). The
+     * thickness of each block is the one Et Futurum's own update ({@code BlockPointedDripstone.setState}) gives it, so
+     * a
+     * neighbour update never changes it: tip, frustum, then middle by the distance to the tip, the root a base only
+     * when the column is at least 4 tall (1.18 also calls the root of a 3-tall column a base).
+     */
     static void growPointedDripstone(Level lv, int x, int y, int z, int dy, int height, boolean merge) {
         if (height <= 0 || !base(lv, x, y - dy, z)) return;
-        int[] column = new int[height];
-        int n = 0;
-        if (height >= 3) {
-            column[n++] = BASE;
-            for (int i = 0; i < height - 3; i++) column[n++] = MIDDLE;
-        }
-        if (height >= 2) column[n++] = FRUSTUM;
-        column[n] = merge ? TIP_MERGE : TIP;
         int offset = dy > 0 ? UP : 0;
         for (int i = 0; i < height; i++) {
             int yy = y + i * dy;
             if (!lv.air(x, yy, z)) return;
-            lv.set(x, yy, z, CaveBlocks.pointedDripstone, column[i] + offset);
+            int toTip = height - 1 - i;
+            int thickness = Math.min(toTip, MIDDLE);
+            if (i == 0 && height >= 4) thickness = BASE;
+            if (toTip == 0 && merge) thickness = TIP_MERGE;
+            lv.set(x, yy, z, CaveBlocks.pointedDripstone, thickness + offset);
         }
     }
 
@@ -233,12 +235,12 @@ final class Dripstone {
     // --------------------------------------------------------------------------------------- DripstoneClusterFeature
 
     /**
-     * {@code dripstone_cluster}: search 12, height 2..6, radius 2..8, wetness N(0.1, 0.3) in 0.1..0.9, density
+     * {@code dripstone_cluster}: search 12, height 3..6, radius 2..8, wetness N(0.1, 0.3) in 0.1..0.9, density
      * 0.3..0.7.
      */
     static void cluster(Level lv, Random r, int x, int y, int z) {
         if (!emptyOrWater(lv, x, y, z)) return;
-        int height = Placement.uniform(r, 2, 6);
+        int height = Placement.uniform(r, 3, 6);
         float wetness = Placement.clampedNormal(r, 0.1F, 0.3F, 0.1F, 0.9F);
         float density = Placement.uniform(r, 0.3F, 0.7F);
         int rx = Placement.uniform(r, 2, 8);

@@ -21,6 +21,18 @@ final class Placement {
         return r.nextFloat() * (max - min) + min;
     }
 
+    /** {@code WeightedListInt} of {@code UniformInt}s: rows of {@code {min, max, weight}}. */
+    static int weightedUniform(Random r, int[][] rows) {
+        int total = 0;
+        for (int[] row : rows) total += row[2];
+        int pick = r.nextInt(total);
+        for (int[] row : rows) {
+            pick -= row[2];
+            if (pick < 0) return uniform(r, row[0], row[1]);
+        }
+        throw new IllegalStateException("unreachable");
+    }
+
     /** {@code Mth.nextInt}: inclusive, and {@code min} when the range is empty. */
     static int nextInt(Random r, int min, int max) {
         return min >= max ? min : r.nextInt(max - min + 1) + min;

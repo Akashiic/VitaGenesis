@@ -16,6 +16,7 @@ mkdir -p "$RUN" build
 echo "eula=true" > "$RUN/eula.txt"
 printf "online-mode=false\nspawn-protection=0\nlevel-seed=vitagenesis\nmax-tick-time=-1\n" > "$RUN/server.properties"
 rm -rf "$RUN/world" "$RUN/crash-reports" "$RUN"/vitagenesis-selftest*.txt
+rm -f "$RUN/config/vitagenesis.cfg" # the defaults are what is tested
 
 # Below Core's generation switch and floor; the config file exists after the first launch
 set_bellow() {

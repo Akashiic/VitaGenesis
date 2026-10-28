@@ -54,7 +54,7 @@ final class LushCaves {
      * @return the ground positions
      */
     static Set<Long> vegetationPatch(Level lv, Random r, int ox, int oy, int oz, int dy, Replaceable replaceable,
-        Block ground, int depth, float extraBottomChance, int verticalRange, float vegetationChance,
+        Block ground, int depthMin, int depthMax, float extraBottomChance, int verticalRange, float vegetationChance,
         float extraEdgeChance, Vegetation vegetation, boolean waterlogged) {
         int rx = Placement.uniform(r, 4, 7) + 1;
         int rz = Placement.uniform(r, 4, 7) + 1;
@@ -75,7 +75,8 @@ final class LushCaves {
                 for (int k = 0; !lv.air(px, py, pz) && k < verticalRange; k++) py -= dy;
                 int sy = py + dy;
                 if (!lv.air(px, py, pz) || !lv.sturdy(px, sy, pz, toSurface.getOpposite())) continue;
-                int d = depth + (extraBottomChance > 0.0F && r.nextFloat() < extraBottomChance ? 1 : 0);
+                int d = Placement.uniform(r, depthMin, depthMax)
+                    + (extraBottomChance > 0.0F && r.nextFloat() < extraBottomChance ? 1 : 0);
                 if (placeGround(lv, px, sy, pz, dy, d, ground, replaceable)) {
                     long key = key(px, sy, pz);
                     if (placed.add(key)) order.add(new long[] { px, sy, pz });
@@ -111,13 +112,14 @@ final class LushCaves {
 
     private static boolean placeGround(Level lv, int x, int y, int z, int dy, int depth, Block ground,
         Replaceable replaceable) {
+        // as 1.18: the cursor only moves on after a block was placed, so existing ground ends the patch there
         for (int i = 0; i < depth; i++) {
             Block current = lv.block(x, y, z);
             if (current != ground) {
                 if (!replaceable.test(current)) return i != 0;
                 lv.set(x, y, z, ground, 0);
+                y += dy;
             }
-            y += dy;
         }
         return true;
     }
@@ -143,11 +145,12 @@ final class LushCaves {
             LushCaves::mossReplaceable,
             CaveBlocks.mossBlock,
             1,
+            2,
             0.0F,
             5,
             0.08F,
             0.3F,
-            (l, rr, a, b, c) -> caveVines(l, rr, a, b, c, 0, 3),
+            (l, rr, a, b, c) -> caveVines(l, rr, a, b, c, VINES_IN_MOSS),
             false);
     }
 
@@ -162,6 +165,7 @@ final class LushCaves {
             -1,
             LushCaves::mossReplaceable,
             CaveBlocks.mossBlock,
+            1,
             1,
             0.0F,
             5,
@@ -184,6 +188,7 @@ final class LushCaves {
                 LushCaves::lushGroundReplaceable,
                 Blocks.clay,
                 3,
+                3,
                 0.8F,
                 2,
                 0.0F,
@@ -200,6 +205,7 @@ final class LushCaves {
                 -1,
                 LushCaves::lushGroundReplaceable,
                 Blocks.clay,
+                3,
                 3,
                 0.8F,
                 5,
@@ -232,21 +238,27 @@ final class LushCaves {
     }
 
     /** {@code cave_vines}: from below a ceiling, 0..19 vine blocks and a tip, glow berries on one in five. */
+    /** {@code cave_vine}: body length 0..19 (weight 2), 0..2 (3) or 0..6 (10). */
+    static final int[][] VINES = { { 0, 19, 2 }, { 0, 2, 3 }, { 0, 6, 10 } };
+    /** {@code cave_vine_in_moss}: body length 0..3 (weight 5) or 1..7 (1). */
+    static final int[][] VINES_IN_MOSS = { { 0, 3, 5 }, { 1, 7, 1 } };
+
     static void caveVinesColumn(Level lv, Random r, int x, int y, int z) {
-        caveVines(lv, r, x, y, z, 0, 19);
+        caveVines(lv, r, x, y, z, VINES);
     }
 
     /**
      * {@code block_column} of cave vines pointing down, with the tip kept when the column is cut short
-     * ({@code prioritizeTip}). The tip's tile entity gets a maximum length of the column plus what the 1.18 tip age
+     * ({@code prioritizeTip}). As in 1.18 each block needs air below it, so a vine never touches the floor. The tip's
+     * tile entity gets a maximum length of the column plus what the 1.18 tip age
      * (23..25 of 25) leaves to grow.
      */
-    static void caveVines(Level lv, Random r, int x, int y, int z, int minBody, int maxBody) {
+    static void caveVines(Level lv, Random r, int x, int y, int z, int[][] lengths) {
         if (CaveBlocks.caveVine == null || CaveBlocks.caveVinePlant == null) return;
-        int body = Placement.uniform(r, minBody, maxBody);
+        int body = Placement.weightedUniform(r, lengths);
         int total = body + 1;
         int free = 0;
-        while (free < total && lv.air(x, y - free, z)) free++;
+        while (free < total && lv.air(x, y - 1 - free, z)) free++;
         if (free == 0) return;
         if (free < total) body = free - 1; // the tip has priority over the body
         int yy = y;

@@ -65,7 +65,7 @@ escavados depois: podem ter construções de jogadores. Por isso os dois entram 
 | `caves.enabled` | true | interruptor geral |
 | `caves.retrogen` | true | escavar também o subsolo de chunks salvos antes do Below Core (só Y < 0) |
 | `caves.noiseCaves` / `aquifers` / `carvers` / `oreVeins` | true | partes do estágio de terreno |
-| `caves.seal` | 1 | camadas sólidas sempre mantidas logo abaixo de Y 0 |
+| `caves.seal` | 4 | camadas sólidas sempre mantidas logo abaixo de Y 0 (4: fogo nas cavernas nunca alcança Y 0) |
 | `caves.fade` | 8 | blocos abaixo do selo em que as cavernas se fecham suavemente (sem teto plano) |
 | `features.geodes` / `dripstoneCaves` / `lushCaves` / `glowLichen` / `underwaterMagma` / `monsterRooms` / `springs` | true | recursos de caverna |
 | `features.flowingFluids` | true | fluidos com lado aberto começam a escorrer |

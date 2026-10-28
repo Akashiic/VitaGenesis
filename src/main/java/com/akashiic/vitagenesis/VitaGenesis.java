@@ -54,7 +54,11 @@ public class VitaGenesis {
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
-        MinecraftForge.EVENT_BUS.register(new DeepLighting.Events());
+        DeepLighting.Events events = new DeepLighting.Events();
+        MinecraftForge.EVENT_BUS.register(events);
+        cpw.mods.fml.common.FMLCommonHandler.instance()
+            .bus()
+            .register(events);
     }
 
     @Mod.EventHandler

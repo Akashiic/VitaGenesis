@@ -22,7 +22,8 @@ public class CaveConfig {
     public static boolean noiseCaves;
 
     @Config.Comment({ "1.18 aquifers: water and lava pools at their own levels inside noise caves.",
-        "Off: noise caves are dry (lava still fills everything below floor + 10, as in 1.18)." })
+        "Off: no aquifer water (1.18 would flood every cave below sea level instead); lava still fills",
+        "everything below floor + 10." })
     @Config.DefaultBoolean(true)
     public static boolean aquifers;
 
@@ -35,8 +36,9 @@ public class CaveConfig {
     public static boolean oreVeins;
 
     @Config.Comment({ "Solid layers always kept right below Y 0, between the deep caves and the 1.7.10 world above",
-        "(whose layer at Y 0 is solid too)." })
-    @Config.DefaultInt(1)
+        "(whose layer at Y 0 is solid too). In 1.7.10 fire spreads up to 4 blocks up through solid blocks: with 4",
+        "layers, fire in the deep caves (lava next to vines, moss, azalea) can never reach Y 0." })
+    @Config.DefaultInt(4)
     @Config.RangeInt(min = 1, max = 16)
     public static int seal;
 

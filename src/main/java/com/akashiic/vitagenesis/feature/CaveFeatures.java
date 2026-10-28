@@ -123,7 +123,7 @@ public final class CaveFeatures {
                 int x = bx + r.nextInt(16);
                 int z = bz + r.nextInt(16);
                 int y = Placement.uniform(r, minY + 6, 30);
-                if (y + Geode.TOP_REACH <= lv.ceiling && y - Geode.BOTTOM_REACH > minY) {
+                if (y + Geode.TOP_REACH <= lv.ceiling) {
                     Geode.place(lv, r, x, y, z, this.geodeNoise);
                 }
             }

@@ -36,9 +36,11 @@ final class Geode {
     private static final int MAX_GEN = 16;
     private static final double NOISE_MULTIPLIER = 0.05D;
     private static final int INVALID_THRESHOLD = 1;
-    /** A geode spans about origin - 2 .. origin + 12 (the distribution points are 4..6 above the origin). */
-    static final int TOP_REACH = 12;
-    static final int BOTTOM_REACH = 2;
+    /**
+     * Highest block a geode can write above its origin: the shell reaches about +14 with four distribution points, the
+     * noise adds to it, and the placement loop stops at +16.
+     */
+    static final int TOP_REACH = MAX_GEN;
 
     private Geode() {}
 

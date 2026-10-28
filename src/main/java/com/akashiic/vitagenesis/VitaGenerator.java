@@ -42,6 +42,7 @@ final class VitaGenerator implements IDeepGenerator {
         long t = System.nanoTime();
         this.features.computeIfAbsent(region.seed(), CaveFeatures::new)
             .decorate(region, CaveConfig.settings());
+        DeepLighting.markOurs(region.chunkAt(region.centerChunkX() << 4, region.centerChunkZ() << 4));
         GenStats.add(1, System.nanoTime() - t);
     }
 

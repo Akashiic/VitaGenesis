@@ -1,7 +1,9 @@
 package com.akashiic.vitagenesis.light;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -16,6 +18,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.event.world.ChunkDataEvent;
+import net.minecraftforge.event.world.ChunkEvent;
 
 import com.akashiic.bellow.api.BellowAPI;
 import com.akashiic.bellow.api.DeepConstants;
@@ -23,6 +26,7 @@ import com.akashiic.bellow.api.IDeepChunk;
 import com.akashiic.vitagenesis.FeatureConfig;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 
 /**
  * Light stage of the deep layer: the block light of everything the cave generator placed that glows (lava, glow lichen,
@@ -35,12 +39,24 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * values. The fill computes exactly the vanilla rule of {@code World.computeLightValue} ({@code max(emission,
  * neighbour - max(1, opacity))}, opaque emitters let light in) and only ever raises values, so the light of the sources
  * of each chunk adds up to the light of all of them, in any order. Changed sections are sent again to the players that
- * already have them. The "lit" mark is saved with the chunk, so each chunk is lit once.
+ * already have them. The "lit" mark is saved with the chunk, so each chunk is lit once. A chunk whose 5x5 completes
+ * only when a decorated neighbour comes back from disk is retried after the next world tick. Only chunks VitaGenesis
+ * decorated are lit and have their fluids started.
  */
 public final class DeepLighting {
 
     /** Chunks already lit. Identity of the loaded chunk object; cleared by garbage collection. */
     private static final Set<Chunk> LIT = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+    /**
+     * Chunks decorated by VitaGenesis. Only those are lit and get their fluids started: a chunk whose deep layer was
+     * decorated without VitaGenesis may hold what players built, still fluids included.
+     */
+    private static final Set<Chunk> OURS = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+    /**
+     * Chunks loaded since the last world tick, per dimension: a chunk that comes back from disk already decorated may
+     * complete the 5x5 of a chunk that could not be lit when it was decorated (a neighbour was unloaded then).
+     */
+    private static final Map<Integer, Set<Long>> PENDING = new HashMap<>();
 
     private static final String NBT_KEY = "VitaGenesis";
     private static final int NBT_VERSION = 1;
@@ -51,13 +67,41 @@ public final class DeepLighting {
         return LIT.contains(chunk);
     }
 
+    /** Self test only: puts a chunk back to the state of a light stage that could not run. */
+    public static void forgetLitForTests(Chunk chunk) {
+        LIT.remove(chunk);
+        chunk.setChunkModified();
+    }
+
+    /** Called from the decoration stage for the chunk VitaGenesis decorates. */
+    public static void markOurs(Chunk chunk) {
+        OURS.add(chunk);
+        chunk.setChunkModified();
+    }
+
     /** Called after {@code chunk} was decorated: lights every chunk whose 5x5 neighbourhood that completed. */
     public static void onDecorated(WorldServer world, Chunk chunk) {
         int minY = BellowAPI.getMinY(world);
         if (minY >= 0) return;
+        tryAround(world, chunk.xPosition, chunk.zPosition, minY);
+    }
+
+    private static void tryAround(WorldServer world, int x, int z, int minY) {
         for (int dz = -2; dz <= 2; dz++) {
-            for (int dx = -2; dx <= 2; dx++) tryLight(world, chunk.xPosition + dx, chunk.zPosition + dz, minY);
+            for (int dx = -2; dx <= 2; dx++) tryLight(world, x + dx, z + dz, minY);
         }
+    }
+
+    /** Retries the chunks around those loaded since the last tick of this world. */
+    public static void processPending(WorldServer world) {
+        Set<Long> pending;
+        synchronized (PENDING) {
+            pending = PENDING.remove(world.provider.dimensionId);
+        }
+        if (pending == null) return;
+        int minY = BellowAPI.getMinY(world);
+        if (minY >= 0) return;
+        for (long key : pending) tryAround(world, (int) (key >> 32), (int) key, minY);
     }
 
     private static Chunk loaded(WorldServer world, int x, int z) {
@@ -71,7 +115,7 @@ public final class DeepLighting {
 
     private static void tryLight(WorldServer world, int cx, int cz, int minY) {
         Chunk centre = loaded(world, cx, cz);
-        if (!decorated(centre) || LIT.contains(centre)) return;
+        if (!decorated(centre) || LIT.contains(centre) || !OURS.contains(centre)) return;
         Chunk[] core = new Chunk[9];
         for (int dz = -2; dz <= 2; dz++) {
             for (int dx = -2; dx <= 2; dx++) {
@@ -243,27 +287,52 @@ public final class DeepLighting {
 
     // ------------------------------------------------------------------------------------------- persistence
 
-    /** Saves and restores the "lit" mark in the chunk's {@code Level} compound. */
+    /** Saves and restores the marks in the chunk's {@code Level} compound, and queues loaded chunks for a retry. */
     public static final class Events {
 
         @SubscribeEvent
-        public void onChunkLoad(ChunkDataEvent.Load event) {
+        public void onChunkDataLoad(ChunkDataEvent.Load event) {
             NBTTagCompound level = event.getData()
                 .getCompoundTag("Level");
             if (!level.hasKey(NBT_KEY, 10)) return;
             NBTTagCompound tag = level.getCompoundTag(NBT_KEY);
-            if (tag.getInteger("V") <= NBT_VERSION && tag.getBoolean("Lit")) LIT.add(event.getChunk());
+            if (tag.getInteger("V") > NBT_VERSION) return;
+            if (tag.getBoolean("Ours")) OURS.add(event.getChunk());
+            if (tag.getBoolean("Lit")) LIT.add(event.getChunk());
         }
 
         @SubscribeEvent
         public void onChunkSave(ChunkDataEvent.Save event) {
-            if (!LIT.contains(event.getChunk())) return;
+            boolean ours = OURS.contains(event.getChunk());
+            boolean lit = LIT.contains(event.getChunk());
+            if (!ours && !lit) return;
             NBTTagCompound tag = new NBTTagCompound();
             tag.setInteger("V", NBT_VERSION);
-            tag.setBoolean("Lit", true);
+            tag.setBoolean("Ours", ours);
+            tag.setBoolean("Lit", lit);
             event.getData()
                 .getCompoundTag("Level")
                 .setTag(NBT_KEY, tag);
+        }
+
+        @SubscribeEvent
+        public void onChunkLoad(ChunkEvent.Load event) {
+            if (!(event.world instanceof WorldServer) || !BellowAPI.hasDeepLayers(event.world)) return;
+            Chunk c = event.getChunk();
+            if (((IDeepChunk) c).bellow$getGenState() != DeepConstants.GEN_DECORATED) return;
+            long key = (long) c.xPosition << 32 | c.zPosition & 0xFFFFFFFFL;
+            synchronized (PENDING) {
+                PENDING.computeIfAbsent(event.world.provider.dimensionId, k -> new LinkedHashSet<>())
+                    .add(key);
+            }
+        }
+
+        /** FML bus: runs the retries after the world tick, outside any chunk load. */
+        @SubscribeEvent
+        public void onWorldTick(TickEvent.WorldTickEvent event) {
+            if (event.phase == TickEvent.Phase.END && event.world instanceof WorldServer) {
+                processPending((WorldServer) event.world);
+            }
         }
     }
 
