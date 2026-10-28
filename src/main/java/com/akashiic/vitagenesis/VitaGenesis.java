@@ -14,6 +14,7 @@ import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
+import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 
 /**
  * 1.18+ world generation backported to 1.7.10. This first part shapes the deep layer of Below Core: noise caves,
@@ -31,6 +32,8 @@ public class VitaGenesis {
 
     public static final String MODID = "vitagenesis";
     public static final Logger LOG = LogManager.getLogger("VitaGenesis");
+
+    private final VitaGenerator generator = new VitaGenerator();
 
     /** Below Core API with deep generators. */
     static final int REQUIRED_BELLOW_API = 2;
@@ -77,10 +80,16 @@ public class VitaGenesis {
                     + "): update Below Core");
         }
         CaveBlocks.resolve();
-        BellowAPI.registerGenerator(MODID + ":caves", new VitaGenerator());
+        BellowAPI.registerGenerator(MODID + ":caves", this.generator);
     }
 
     /** Headless verification: {@code -Dvitagenesis.selftest=true [-Dvitagenesis.selftest.exit=true]}. */
+    @Mod.EventHandler
+    public void serverStopped(FMLServerStoppedEvent event) {
+        this.generator.clearCaches();
+        DeepLighting.clear();
+    }
+
     @Mod.EventHandler
     public void serverStarted(FMLServerStartedEvent event) {
         WorldStamp.check();

@@ -3,6 +3,7 @@ package com.akashiic.vitagenesis.light;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +27,7 @@ import com.akashiic.bellow.api.DeepConstants;
 import com.akashiic.bellow.api.IDeepChunk;
 import com.akashiic.vitagenesis.FeatureConfig;
 import com.akashiic.vitagenesis.GenStats;
+import com.akashiic.vitagenesis.VitaGenesis;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
@@ -60,6 +62,9 @@ public final class DeepLighting {
      * complete the 5x5 of a chunk that could not be lit when it was decorated (a neighbour was unloaded then).
      */
     private static final Map<Integer, Set<Long>> PENDING = new HashMap<>();
+
+    /** Time per world tick the light stage may take; a pre-generator or a fast flight queue far more than that. */
+    static final long BUDGET_NANOS = 10_000_000L;
 
     private static final String NBT_KEY = "VitaGenesis";
     private static final int NBT_VERSION = 1;
@@ -99,22 +104,52 @@ public final class DeepLighting {
         }
     }
 
-    private static void tryAround(WorldServer world, int x, int z, int minY) {
+    private static void tryAround(WorldServer world, int x, int z, int minY, Map<Chunk, Integer> resend) {
         for (int dz = -2; dz <= 2; dz++) {
-            for (int dx = -2; dx <= 2; dx++) tryLight(world, x + dx, z + dz, minY);
+            for (int dx = -2; dx <= 2; dx++) tryLight(world, x + dx, z + dz, minY, resend);
         }
     }
 
-    /** Retries the chunks around those loaded since the last tick of this world. */
-    public static void processPending(WorldServer world) {
+    /**
+     * Lights the chunks around those queued since the last tick of this world, for at most {@link #BUDGET_NANOS} (one
+     * queued chunk at least); the rest waits for the next tick. Sections are resent once per chunk, at the end.
+     *
+     * @return whether chunks are still queued for this world
+     */
+    public static boolean processPending(WorldServer world) {
+        int dim = world.provider.dimensionId;
         Set<Long> pending;
         synchronized (PENDING) {
-            pending = PENDING.remove(world.provider.dimensionId);
+            pending = PENDING.remove(dim);
         }
-        if (pending == null) return;
+        if (pending == null) return false;
         int minY = BellowAPI.getMinY(world);
-        if (minY >= 0) return;
-        for (long key : pending) tryAround(world, (int) (key >> 32), (int) key, minY);
+        if (minY >= 0) return false;
+        Map<Chunk, Integer> resend = new IdentityHashMap<>();
+        long end = System.nanoTime() + BUDGET_NANOS;
+        Iterator<Long> it = pending.iterator();
+        while (it.hasNext()) {
+            long key = it.next();
+            it.remove();
+            tryAround(world, (int) (key >> 32), (int) key, minY, resend);
+            if (System.nanoTime() > end) break;
+        }
+        for (Map.Entry<Chunk, Integer> e : resend.entrySet())
+            BellowAPI.resendDeepSections(world, e.getKey(), e.getValue());
+        if (pending.isEmpty()) return false;
+        synchronized (PENDING) {
+            // keep the order: what was left first, then what was queued meanwhile
+            Set<Long> later = PENDING.put(dim, pending);
+            if (later != null) pending.addAll(later);
+        }
+        return true;
+    }
+
+    /** Drops what is queued (server stopping): the marks are saved, the chunks are queued again when loaded. */
+    public static void clear() {
+        synchronized (PENDING) {
+            PENDING.clear();
+        }
     }
 
     private static Chunk loaded(WorldServer world, int x, int z) {
@@ -123,10 +158,10 @@ public final class DeepLighting {
     }
 
     private static boolean decorated(Chunk c) {
-        return c != null && ((IDeepChunk) c).bellow$getGenState() == DeepConstants.GEN_DECORATED;
+        return c != null && ((IDeepChunk) c).bellow$getGenState() >= DeepConstants.GEN_DECORATED;
     }
 
-    private static void tryLight(WorldServer world, int cx, int cz, int minY) {
+    private static void tryLight(WorldServer world, int cx, int cz, int minY, Map<Chunk, Integer> resend) {
         Chunk centre = loaded(world, cx, cz);
         if (!decorated(centre) || LIT.contains(centre) || !OURS.contains(centre)) return;
         Chunk[] core = new Chunk[9];
@@ -138,11 +173,20 @@ public final class DeepLighting {
             }
         }
         long t = System.nanoTime();
+        try {
+            new Flood(world, core, cx, cz, minY, resend).run();
+            if (FeatureConfig.flowingFluids) FluidActivation.run(world, centre, minY);
+        } catch (RuntimeException | StackOverflowError e) {
+            // a block of another mod failing in getLightValue or a fluid neighbour update: never take the server down
+            // from the world tick. The chunk stays unlit and is retried when it is queued again.
+            VitaGenesis.LOG
+                .error("Light stage failed for chunk {}, {} in dimension {}", cx, cz, world.provider.dimensionId, e);
+            return;
+        } finally {
+            GenStats.add(GenStats.LIGHT, System.nanoTime() - t);
+        }
         LIT.add(centre);
         centre.setChunkModified();
-        new Flood(world, core, cx, cz, minY).run();
-        if (FeatureConfig.flowingFluids) FluidActivation.run(world, centre, minY);
-        GenStats.add(GenStats.LIGHT, System.nanoTime() - t);
     }
 
     // ------------------------------------------------------------------------------------------- light properties
@@ -199,8 +243,10 @@ public final class DeepLighting {
         private final int height;
         private final ExtendedBlockStorage[][] sections;
         private final int[] touched = new int[9];
+        private final Map<Chunk, Integer> resend;
 
-        Flood(WorldServer world, Chunk[] core, int cx, int cz, int minY) {
+        Flood(WorldServer world, Chunk[] core, int cx, int cz, int minY, Map<Chunk, Integer> resend) {
+            this.resend = resend;
             this.world = world;
             this.core = core;
             this.originX = (cx - 1) << 4;
@@ -284,7 +330,7 @@ public final class DeepLighting {
             for (int i = 0; i < 9; i++) {
                 if (this.touched[i] == 0) continue;
                 this.core[i].setChunkModified();
-                BellowAPI.resendDeepSections(this.world, this.core[i], this.touched[i]);
+                this.resend.merge(this.core[i], this.touched[i], (a, b) -> a | b);
             }
         }
 
@@ -334,7 +380,7 @@ public final class DeepLighting {
         public void onChunkLoad(ChunkEvent.Load event) {
             if (!(event.world instanceof WorldServer) || !BellowAPI.hasDeepLayers(event.world)) return;
             Chunk c = event.getChunk();
-            if (((IDeepChunk) c).bellow$getGenState() != DeepConstants.GEN_DECORATED) return;
+            if (((IDeepChunk) c).bellow$getGenState() < DeepConstants.GEN_DECORATED) return;
             queue(event.world, c);
         }
 

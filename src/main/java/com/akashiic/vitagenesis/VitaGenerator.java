@@ -21,6 +21,12 @@ final class VitaGenerator implements IDeepGenerator {
     private final Map<Long, CaveNoise> noises = new HashMap<>();
     private final Map<Long, CaveFeatures> features = new HashMap<>();
 
+    /** Drops the per-seed caches (server stopped: the next world may have another seed, Mystcraft ages add more). */
+    void clearCaches() {
+        this.noises.clear();
+        this.features.clear();
+    }
+
     @Override
     public void generateTerrain(Chunk chunk, int minY, long seed, boolean retrogen) {
         if (!CaveConfig.enabled || retrogen && !CaveConfig.retrogen) return;
@@ -40,9 +46,13 @@ final class VitaGenerator implements IDeepGenerator {
     public void decorate(IDeepRegion region) {
         if (!CaveConfig.enabled) return;
         long t = System.nanoTime();
-        this.features.computeIfAbsent(region.seed(), CaveFeatures::new)
-            .decorate(region, CaveConfig.settings());
-        DeepLighting.markOurs(region.chunkAt(region.centerChunkX() << 4, region.centerChunkZ() << 4));
+        try {
+            this.features.computeIfAbsent(region.seed(), CaveFeatures::new)
+                .decorate(region, CaveConfig.settings());
+        } finally {
+            // the terrain stage carved this chunk: it is ours to light even if a feature failed
+            DeepLighting.markOurs(region.chunkAt(region.centerChunkX() << 4, region.centerChunkZ() << 4));
+        }
         GenStats.add(GenStats.DECORATION, System.nanoTime() - t);
     }
 

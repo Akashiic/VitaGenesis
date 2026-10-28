@@ -224,11 +224,11 @@ public final class SelfTest {
                 if (dx != -2 || dz != 0) world.theChunkProviderServer.loadChunk(ex + dx, ez + dz);
             }
         }
-        DeepLighting.processPending(world);
+        while (DeepLighting.processPending(world));
         Chunk target = world.getChunkFromChunkCoords(ex, ez);
         boolean before = DeepLighting.isLit(target);
         world.theChunkProviderServer.loadChunk(ex - 2, ez);
-        DeepLighting.processPending(world);
+        while (DeepLighting.processPending(world));
         boolean after = DeepLighting.isLit(target);
         this.check(
             !before && after,
@@ -263,7 +263,7 @@ public final class SelfTest {
         world.setBlock(x0 - 1, y0, z0, Blocks.water, 0, 2);
         Chunk centre = world.getChunkFromChunkCoords(f[0], f[1]);
         DeepLighting.onDecorated(world, centre);
-        DeepLighting.processPending(world);
+        while (DeepLighting.processPending(world));
         this.check(
             world.getBlock(x0 - 1, y0, z0) == Blocks.water && !DeepLighting.isLit(centre),
             "chunk decorated without VitaGenesis left alone by the light stage (water still: "
