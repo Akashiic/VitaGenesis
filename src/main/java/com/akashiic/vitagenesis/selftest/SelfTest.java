@@ -481,9 +481,11 @@ public final class SelfTest {
         this.check(notLit == 0, "all measured chunks lit: " + (columns - notLit) + "/" + columns);
         this.check(floorBroken == 0, "floor (Y " + minY + ") is bedrock everywhere: " + floorBroken + " broken");
         this.check(sealBroken == 0, "seal below Y 0 (Y " + (ceiling + 1) + "..-1) is solid: " + sealBroken + " open");
+        // 9x9-chunk areas of the 1.18 noise range from 1.7 % to 17 % open at floor -64 (60 random areas, two seeds):
+        // the check only catches a generator that does nothing or carves everything
         this.check(
-            fraction > 0.03D && fraction < 0.30D,
-            String.format("cave volume plausible (3%%..30%%): %.3f", fraction));
+            fraction > 0.01D && fraction < 0.30D,
+            String.format("cave volume plausible (1%%..30%%): %.3f", fraction));
         int lavaLow = 0;
         for (Map.Entry<String, Integer> e : histogram.entrySet()) {
             if (e.getKey()

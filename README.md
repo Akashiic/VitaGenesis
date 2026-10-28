@@ -65,7 +65,7 @@ escavados depois: podem ter construções de jogadores. Por isso os dois entram 
 | `caves.enabled` | true | interruptor geral |
 | `caves.retrogen` | true | escavar também o subsolo de chunks salvos antes do Below Core (só Y < 0) |
 | `caves.noiseCaves` / `aquifers` / `carvers` / `oreVeins` | true | partes do estágio de terreno |
-| `caves.seal` | 4 | camadas sólidas sempre mantidas logo abaixo de Y 0 (4: fogo nas cavernas nunca alcança Y 0) |
+| `caves.seal` | 4 | camadas sólidas sempre mantidas logo abaixo de Y 0 (mínimo 3; com 4 o fogo nas cavernas chega no máximo a Y −2) |
 | `caves.fade` | 8 | blocos abaixo do selo em que as cavernas se fecham suavemente (sem teto plano) |
 | `features.geodes` / `dripstoneCaves` / `lushCaves` / `glowLichen` / `underwaterMagma` / `monsterRooms` / `springs` | true | recursos de caverna |
 | `features.flowingFluids` | true | fluidos com lado aberto começam a escorrer |
@@ -73,7 +73,12 @@ escavados depois: podem ter construções de jogadores. Por isso os dois entram 
 | `features.lushRainfallWeight` | 1.0 | peso da chuva do bioma 1.7.10 de cima na umidade (0 = só o ruído da 1.18) |
 | `features.dripstoneContinentalness` | 0.8 | continentalidade mínima das cavernas de gotejamento (1.18: 0.8) |
 
-Mudanças valem para chunks gerados depois; chunks já gerados nunca são regerados.
+Mudanças valem para chunks gerados depois; chunks já gerados nunca são regerados. Mudar as opções de `caves` num
+mundo já explorado cria bordas que não casam (uma caverna cheia d'água ao lado de uma vazia pode inundá-la): o
+VitaGenesis guarda as opções usadas em `<mundo>/vitagenesis.txt` e avisa no log quando elas mudam.
+
+Com piso −16, a lava global da 1.18 (piso + 10) ocupa quase toda a camada; o comportamento pensado é para −64 ou mais
+fundo. Auditoria, testes no pack real e a checklist de limitações do Below Core: [docs/AUDIT.md](docs/AUDIT.md).
 
 ## Compilar e testar
 
@@ -83,6 +88,7 @@ VERSION=0.1.0-beta.1 ./gradlew build                        # jar em build/libs 
 tools/selftest.sh -64                                       # servidor dedicado, 3 fases, piso -64
 tools/selftest.sh -128                                      # idem, piso -128
 tools/clienttest.sh                                         # cliente headless (xvfb-run; EGL/Mesa: libegl1 libegl-mesa0 libgles2)
+tools/crucibletest.sh <cópia do servidor>                   # self-test no servidor real (Crucible + pack), linha de comando de produção
 ```
 
 O self-test cria um mundo "pré-gerado" sem subsolo, liga a geração e verifica a retrogen dele e uma área nova,

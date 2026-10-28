@@ -177,10 +177,14 @@ As seções alteradas são reenviadas aos jogadores (`BellowAPI.resendDeepSectio
 NBT do chunk (`Level.VitaGenesis`), então cada chunk é iluminado uma única vez. Valores dinâmicos de luz e opacidade
 (métodos do Forge sobrescritos, por exemplo nos cipós do EFR) são consultados por posição; os demais usam o valor fixo.
 
-**Re-tentativa.** O estágio é tentado quando um chunk é decorado e também quando um chunk já decorado volta do
-disco. A tentativa vai para uma fila processada depois do tick do mundo, fora de qualquer carregamento. Sem isso, um
-chunk cujo 5×5 foi completado com um vizinho descarregado (jogador que vai embora, pré-gerador varrendo o mapa)
-ficaria sem luz para sempre.
+**Fila no fim do tick.** O estágio é tentado quando um chunk é decorado e também quando um chunk já decorado volta do
+disco. Nos dois casos o chunk só entra numa fila, processada depois do tick do mundo, fora de qualquer carregamento:
+uma carga de chunk pode acontecer no meio de qualquer coisa (um jogador colocando bloco com os snapshots do Forge
+ligados, que reverteriam as escritas; um gerador com `scheduledUpdatesAreImmediate`, em que o fluido ativado escorreria
+recursivamente). A fila tem orçamento de 10 ms por tick do mundo; uma falha num chunk (bloco de outro mod) vai para o
+log, não derruba o servidor, e o chunk fica sem a marca até voltar à fila. As seções iluminadas são reenviadas uma vez
+por chunk no fim do processamento. Sem a re-tentativa, um chunk cujo 5×5 foi completado com um vizinho descarregado
+(jogador que vai embora, pré-gerador varrendo o mapa) ficaria sem luz para sempre.
 
 **Só chunks do VitaGenesis.** O estágio exige uma marca persistente (`Ours`), gravada quando o VitaGenesis decora o
 chunk. Um chunk decorado pelo Below Core sem o VitaGenesis (antes da instalação) pode ter construções, fluidos parados

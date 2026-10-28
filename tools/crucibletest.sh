@@ -49,7 +49,7 @@ run() {
 set_bellow() { [ -f "$cfg" ] && sed -i "/^worldgen {/,/^}/ s/B:enabled=.*/B:enabled=$1/" "$cfg"; }
 
 # the config file exists after the first launch: create it, then start over from a new world
-if [ ! -f "$cfg" ]; then run bootstrap || true; rm -rf -- "$level" vitagenesis-selftest*.txt; fi
+if [ ! -f "$cfg" ]; then echo "== first launch (creates the config files; its report is not a result)"; run bootstrap > /dev/null || true; rm -rf -- "$level" vitagenesis-selftest*.txt; fi
 set_bellow false; run bootstrap || exit 1
 set_bellow true;  run full || exit 1
 run reload || exit 1
