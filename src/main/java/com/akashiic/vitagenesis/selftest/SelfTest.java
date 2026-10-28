@@ -131,10 +131,12 @@ public final class SelfTest {
     }
 
     public static void load(WorldServer world, int[] centre, int radius) {
-        for (int dx = -LOADED; dx <= LOADED; dx++) {
-            for (int dz = -LOADED; dz <= LOADED; dz++)
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++)
                 world.theChunkProviderServer.loadChunk(centre[0] + dx, centre[1] + dz);
         }
+        // the light stage runs after the world tick; the self test runs before the first tick
+        while (DeepLighting.processPending(world));
     }
 
     private void full(WorldServer world, int minY) throws IOException {
