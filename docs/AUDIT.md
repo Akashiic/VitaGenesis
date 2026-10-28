@@ -21,7 +21,11 @@ Seed aleatória, piso −64, configs do pacote (EFR: musgo/azaleia ligado, **dri
 | chunk decorado sem o VitaGenesis não é tocado pela luz | PASS |
 | costura: chunk iluminado quando o vizinho decorado volta do disco (JVM nova) | PASS |
 | releitura em JVM nova: blocos, metadados e luz idênticos; marcas restauradas | PASS (243/243) |
-| custo por chunk no pack (VG): terreno 4,0 ms, decoração 1,3 ms, luz 1,0 ms | retrogen 9,5 ms/chunk no total; chunk novo 43 ms (inclui o terragen 1.7.10 e todos os mods) |
+| custo por chunk no pack (VG): terreno 4,0–4,8 ms, decoração 1,3–1,4 ms, luz 1,0–1,8 ms por chunk iluminado | retrogen 9,5–16 ms/chunk no total; chunk novo 43–57 ms (inclui o terragen 1.7.10 e todos os mods) |
+| erros do VitaGenesis no log (`Light stage failed`, exceções) | nenhum; só o aviso esperado de dripstone desligado |
+
+Rodada final, com todas as correções da seção 2 (seed aleatória nova): **PASS** nas 3 fases no pack real e em
+`tools/selftest.sh -64` e `-128`.
 
 O único FAIL da primeira rodada foi o volume de cavernas da área B (2,0 %, limite do teste 3 %). Reproduzido fora do
 jogo com a mesma seed (2,2 %); em 60 áreas 9×9 aleatórias de duas seeds o volume vai de 1,7 % a 17 % (10 a 15 % das
