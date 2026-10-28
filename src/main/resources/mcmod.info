@@ -1,0 +1,13 @@
+[
+  {
+    "modid": "vitagenesis",
+    "name": "VitaGenesis",
+    "description": "Minecraft 1.18+ world generation backported to 1.7.10. Caves of the deep layer of Below Core: noise caves, aquifers, carvers, ore veins, lush and dripstone caves, geodes.",
+    "version": "${modVersion}",
+    "mcversion": "${minecraftVersion}",
+    "url": "https://github.com/Akashiic/VitaGenesis",
+    "authorList": ["Akashiic"],
+    "credits": "Cave generation ported from Minecraft 1.18 (noise router, aquifers, carvers, ore veins, cave features). Blocks by Et Futurum Requiem.",
+    "dependencies": ["akashicbellow"]
+  }
+]
