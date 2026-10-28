@@ -36,10 +36,11 @@ public class CaveConfig {
     public static boolean oreVeins;
 
     @Config.Comment({ "Solid layers always kept right below Y 0, between the deep caves and the 1.7.10 world above",
-        "(whose layer at Y 0 is solid too). In 1.7.10 fire spreads up to 4 blocks up through solid blocks: with 4",
-        "layers, fire in the deep caves (lava next to vines, moss, azalea) can never reach Y 0." })
+        "(whose layer at Y 0 is solid too). In 1.7.10 fire spreads up to 4 blocks up through solid blocks: the",
+        "highest open block is -2 - seal, so with 4 layers fire in the deep caves (lava next to vines, moss, azalea)",
+        "reaches Y -2 at most; 3 is the least that keeps it below Y 0." })
     @Config.DefaultInt(4)
-    @Config.RangeInt(min = 1, max = 16)
+    @Config.RangeInt(min = 3, max = 16)
     public static int seal;
 
     @Config.Comment("Blocks below the seal over which the caves close smoothly instead of ending in a flat ceiling.")

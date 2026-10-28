@@ -50,6 +50,11 @@ public final class SelfTest {
     static final int MEASURED = LOADED - 3;
     static final int[] AREA_A = { 40, 40 };
     static final int[] AREA_B = { -60, 90 };
+    /** Per-chunk checksums of area A at Y >= 0, written by bootstrap, compared after the retrogen. */
+    static final String SURFACE_FILE = "vitagenesis-selftest-surface.txt";
+    /** Chunks of area A whose population and that of their neighbours ended in bootstrap. */
+    static final int SURFACE_RADIUS = LOADED - 2;
+
     /** Area of the seam test, far from the other areas and from spawn. */
     static final int[] AREA_E = { 120, -120 };
     static final String CHECKSUM_FILE = "vitagenesis-selftest-checksum.txt";
@@ -108,6 +113,7 @@ public final class SelfTest {
                 this.check(
                     ((IDeepChunk) c).bellow$getGenState() == DeepConstants.GEN_NONE,
                     "area A has no deep layer yet");
+                Files.write(new File(SURFACE_FILE).toPath(), surfaceSums(world).getBytes(StandardCharsets.UTF_8));
                 return;
             case "full":
                 this.full(world, minY);
@@ -140,6 +146,7 @@ public final class SelfTest {
         long t0 = System.nanoTime();
         load(world, AREA_A);
         long t1 = System.nanoTime();
+        this.surfaceUnchanged(world);
         load(world, AREA_B);
         long t2 = System.nanoTime();
         int chunks = (2 * LOADED + 1) * (2 * LOADED + 1);
@@ -178,7 +185,7 @@ public final class SelfTest {
         }
         this.seamSetup(world);
         this.notOurs(world);
-        this.line(GenStats.report() + " (light: per decorated chunk, including the 5x5 check)");
+        this.line(GenStats.report() + " (light: per lit chunk)");
         world.theChunkProviderServer.saveChunks(true, null);
         StringBuilder sums = new StringBuilder();
         for (int[] area : areas) sums.append(area[0])
@@ -256,6 +263,7 @@ public final class SelfTest {
         world.setBlock(x0 - 1, y0, z0, Blocks.water, 0, 2);
         Chunk centre = world.getChunkFromChunkCoords(f[0], f[1]);
         DeepLighting.onDecorated(world, centre);
+        DeepLighting.processPending(world);
         this.check(
             world.getBlock(x0 - 1, y0, z0) == Blocks.water && !DeepLighting.isLit(centre),
             "chunk decorated without VitaGenesis left alone by the light stage (water still: "
@@ -320,6 +328,70 @@ public final class SelfTest {
         }
         this.check(lit == total, "lit marks restored from disk: " + lit + "/" + total);
         this.seamReload(world);
+    }
+
+    /**
+     * Blocks and metadata at Y >= 0 of the chunks of area A that are fully populated (their neighbours too, so no later
+     * population writes into them). The old bedrock at Y 0..4 may become the deep block (Below Core's documented
+     * legacy bedrock replacement): bedrock and deepslate hash the same there.
+     */
+    private static String surfaceSums(WorldServer world) {
+        StringBuilder out = new StringBuilder();
+        for (int dx = -SURFACE_RADIUS; dx <= SURFACE_RADIUS; dx++) {
+            for (int dz = -SURFACE_RADIUS; dz <= SURFACE_RADIUS; dz++) {
+                Chunk c = world.getChunkFromChunkCoords(AREA_A[0] + dx, AREA_A[1] + dz);
+                CRC32 crc = new CRC32();
+                ExtendedBlockStorage[] sections = c.getBlockStorageArray();
+                for (int sy = 0; sy < sections.length; sy++) {
+                    ExtendedBlockStorage ebs = sections[sy];
+                    if (ebs == null) continue;
+                    for (int i = 0; i < 4096; i++) {
+                        int x = i & 15;
+                        int z = i >> 4 & 15;
+                        int y = i >> 8;
+                        Block b = ebs.getBlockByExtId(x, y, z);
+                        boolean legacyFloor = sy == 0 && y <= 4 && (b == Blocks.bedrock || b == CaveBlocks.deepslate);
+                        crc.update(legacyFloor ? -1 : Block.getIdFromBlock(b));
+                        crc.update(legacyFloor ? 0 : ebs.getExtBlockMetadata(x, y, z));
+                    }
+                }
+                out.append(c.xPosition)
+                    .append(' ')
+                    .append(c.zPosition)
+                    .append(' ')
+                    .append(Long.toHexString(crc.getValue()))
+                    .append('\n');
+            }
+        }
+        return out.toString();
+    }
+
+    /** The golden rule, measured: the retrogen changed nothing at Y >= 0 of the pre-generated area. */
+    private void surfaceUnchanged(WorldServer world) throws IOException {
+        File f = new File(SURFACE_FILE);
+        if (!f.isFile()) {
+            this.fail("no surface checksums from the bootstrap phase");
+            return;
+        }
+        List<String> before = Files.readAllLines(f.toPath(), StandardCharsets.UTF_8);
+        String[] after = surfaceSums(world).split("\n");
+        int changed = 0;
+        StringBuilder which = new StringBuilder();
+        for (int i = 0; i < after.length; i++) {
+            if (i >= before.size() || !before.get(i)
+                .equals(after[i])) {
+                changed++;
+                if (changed <= 5) which.append(' ')
+                    .append(after[i], 0, after[i].lastIndexOf(' '));
+            }
+        }
+        this.check(
+            changed == 0,
+            "retrogen left Y >= 0 of " + after.length
+                + " pre-generated chunks unchanged: "
+                + changed
+                + " changed"
+                + which);
     }
 
     /** Checksum of blocks, metadata and block light of the measured chunks, below Y 0. */

@@ -87,8 +87,9 @@ blocos dela, e o mundo de cima (1.7.10) não é lido; isso também mantém o est
 ### 4.4 Fechamento sob Y 0 (selo e esmaecimento)
 
 `seal` camadas logo abaixo de 0 ficam sempre sólidas (padrão 4). O valor 4 vem do fogo da 1.7.10: o
-`BlockFire.updateTick` acende ar até 4 blocos acima **sem checar obstrução**. Com 4 camadas, fogo nas cavernas (lava
-junto de vinhas, musgo, azaleia) chega no máximo a Y −1 e nunca alcança o mundo de cima. A lava só acende fogo para
+`BlockFire.updateTick` acende ar até 4 blocos acima **sem checar obstrução**. O bloco aberto mais alto é `−2 − seal`
+(medido de −16 a −512, `seal` de 1 a 16): com 4 camadas, fogo nas cavernas (lava junto de vinhas, musgo, azaleia)
+chega no máximo a Y −2 e nunca alcança o mundo de cima. O mínimo aceito é 3 (fogo até Y −1). A lava só acende fogo para
 cima até achar um bloco sólido. Nos `fade` blocos de baixo do selo (padrão 8), a
 densidade recebe `0,5·t²`, acima do menor valor que o roteador produz (o *squeeze* fica em ±0,458), e os elipsoides dos
 carvers encolhem na mesma proporção. As cavernas se fecham pelo contorno do ruído, sem teto plano em Y −1.

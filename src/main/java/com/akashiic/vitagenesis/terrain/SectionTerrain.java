@@ -1,5 +1,7 @@
 package com.akashiic.vitagenesis.terrain;
 
+import java.util.BitSet;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
@@ -17,9 +19,12 @@ public final class SectionTerrain implements DeepCaves.Chunk {
 
     private final ExtendedBlockStorage[] sections;
     private final int minY;
+    /** Positions this pass turned into a vein: told apart by position, not block, since the fill can be any block. */
+    private final BitSet veins;
 
     public SectionTerrain(Chunk chunk, int minY) {
         this.minY = minY;
+        this.veins = new BitSet(-minY << 8);
         this.sections = new ExtendedBlockStorage[-minY >> 4];
         for (int sy = minY >> 4; sy < 0; sy++) this.sections[sy - (minY >> 4)] = BellowAPI.getDeepSection(chunk, sy);
     }
@@ -36,10 +41,7 @@ public final class SectionTerrain implements DeepCaves.Chunk {
         Material m = b.getMaterial();
         if (m == Material.air || m.isLiquid()) return OTHER;
         if (b == Blocks.bedrock) return y == this.minY ? OTHER : BEDROCK;
-        if (b == CaveBlocks.ironOre || b == CaveBlocks.tuff && CaveBlocks.tuff != null
-            || b == CaveBlocks.rawOreBlock && CaveBlocks.rawOreBlock != null) {
-            return VEIN;
-        }
+        if (this.veins.get(this.index(lx, y, lz))) return VEIN;
         return b.hasTileEntity(ebs.getExtBlockMetadata(lx, y & 15, lz)) ? OTHER : FILL;
     }
 
@@ -51,6 +53,8 @@ public final class SectionTerrain implements DeepCaves.Chunk {
 
     @Override
     public void setVein(int lx, int y, int lz, byte vein) {
+        if (vein == OreVeins.ORE || vein == OreVeins.RAW_BLOCK || vein == OreVeins.FILLER && CaveBlocks.tuff != null)
+            this.veins.set(this.index(lx, y, lz));
         switch (vein) {
             case OreVeins.ORE:
                 this.set(lx, y, lz, CaveBlocks.ironOre, 0);
@@ -66,6 +70,10 @@ public final class SectionTerrain implements DeepCaves.Chunk {
             default:
                 break;
         }
+    }
+
+    private int index(int lx, int y, int lz) {
+        return (y - this.minY) << 8 | lz << 4 | lx;
     }
 
     private void set(int lx, int y, int lz, Block block, int meta) {

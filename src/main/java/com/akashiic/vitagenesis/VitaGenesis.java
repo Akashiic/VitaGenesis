@@ -83,6 +83,7 @@ public class VitaGenesis {
     /** Headless verification: {@code -Dvitagenesis.selftest=true [-Dvitagenesis.selftest.exit=true]}. */
     @Mod.EventHandler
     public void serverStarted(FMLServerStartedEvent event) {
+        WorldStamp.check();
         if (Boolean.getBoolean("vitagenesis.selftest")) com.akashiic.vitagenesis.selftest.SelfTest.start();
     }
 }

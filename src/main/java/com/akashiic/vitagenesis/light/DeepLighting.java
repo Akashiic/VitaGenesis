@@ -13,6 +13,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
@@ -24,6 +25,7 @@ import com.akashiic.bellow.api.BellowAPI;
 import com.akashiic.bellow.api.DeepConstants;
 import com.akashiic.bellow.api.IDeepChunk;
 import com.akashiic.vitagenesis.FeatureConfig;
+import com.akashiic.vitagenesis.GenStats;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
@@ -39,8 +41,9 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * values. The fill computes exactly the vanilla rule of {@code World.computeLightValue} ({@code max(emission,
  * neighbour - max(1, opacity))}, opaque emitters let light in) and only ever raises values, so the light of the sources
  * of each chunk adds up to the light of all of them, in any order. Changed sections are sent again to the players that
- * already have them. The "lit" mark is saved with the chunk, so each chunk is lit once. A chunk whose 5x5 completes
- * only when a decorated neighbour comes back from disk is retried after the next world tick. Only chunks VitaGenesis
+ * already have them. The "lit" mark is saved with the chunk, so each chunk is lit once. Decorated chunks and decorated
+ * chunks coming back from disk are queued, and the queue runs after the world tick, outside any chunk load. Only chunks
+ * VitaGenesis
  * decorated are lit and have their fluids started.
  */
 public final class DeepLighting {
@@ -79,11 +82,21 @@ public final class DeepLighting {
         chunk.setChunkModified();
     }
 
-    /** Called after {@code chunk} was decorated: lights every chunk whose 5x5 neighbourhood that completed. */
+    /**
+     * Called after {@code chunk} was decorated. Only queues: the light stage writes through the World (fluids) and must
+     * not run inside a chunk load, which can happen in the middle of anything (another generator, a player placing a
+     * block while Forge captures block snapshots and may revert every change of that moment).
+     */
     public static void onDecorated(WorldServer world, Chunk chunk) {
-        int minY = BellowAPI.getMinY(world);
-        if (minY >= 0) return;
-        tryAround(world, chunk.xPosition, chunk.zPosition, minY);
+        queue(world, chunk);
+    }
+
+    private static void queue(World world, Chunk c) {
+        long key = (long) c.xPosition << 32 | c.zPosition & 0xFFFFFFFFL;
+        synchronized (PENDING) {
+            PENDING.computeIfAbsent(world.provider.dimensionId, k -> new LinkedHashSet<>())
+                .add(key);
+        }
     }
 
     private static void tryAround(WorldServer world, int x, int z, int minY) {
@@ -124,10 +137,12 @@ public final class DeepLighting {
                 if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1) core[(dz + 1) * 3 + dx + 1] = c;
             }
         }
+        long t = System.nanoTime();
         LIT.add(centre);
         centre.setChunkModified();
         new Flood(world, core, cx, cz, minY).run();
         if (FeatureConfig.flowingFluids) FluidActivation.run(world, centre, minY);
+        GenStats.add(GenStats.LIGHT, System.nanoTime() - t);
     }
 
     // ------------------------------------------------------------------------------------------- light properties
@@ -320,11 +335,7 @@ public final class DeepLighting {
             if (!(event.world instanceof WorldServer) || !BellowAPI.hasDeepLayers(event.world)) return;
             Chunk c = event.getChunk();
             if (((IDeepChunk) c).bellow$getGenState() != DeepConstants.GEN_DECORATED) return;
-            long key = (long) c.xPosition << 32 | c.zPosition & 0xFFFFFFFFL;
-            synchronized (PENDING) {
-                PENDING.computeIfAbsent(event.world.provider.dimensionId, k -> new LinkedHashSet<>())
-                    .add(key);
-            }
+            queue(event.world, c);
         }
 
         /** FML bus: runs the retries after the world tick, outside any chunk load. */

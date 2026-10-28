@@ -33,7 +33,7 @@ final class VitaGenerator implements IDeepGenerator {
             minY,
             CaveConfig.settings(),
             new SectionTerrain(chunk, minY));
-        GenStats.add(0, System.nanoTime() - t);
+        GenStats.add(GenStats.TERRAIN, System.nanoTime() - t);
     }
 
     @Override
@@ -43,14 +43,12 @@ final class VitaGenerator implements IDeepGenerator {
         this.features.computeIfAbsent(region.seed(), CaveFeatures::new)
             .decorate(region, CaveConfig.settings());
         DeepLighting.markOurs(region.chunkAt(region.centerChunkX() << 4, region.centerChunkZ() << 4));
-        GenStats.add(1, System.nanoTime() - t);
+        GenStats.add(GenStats.DECORATION, System.nanoTime() - t);
     }
 
     @Override
     public void onDecorated(WorldServer world, Chunk chunk) {
         if (!CaveConfig.enabled) return;
-        long t = System.nanoTime();
         DeepLighting.onDecorated(world, chunk);
-        GenStats.add(2, System.nanoTime() - t);
     }
 }

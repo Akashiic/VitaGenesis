@@ -5,12 +5,16 @@ public final class GenStats {
 
     public static final String[] STAGES = { "terrain", "decoration", "light" };
 
+    public static final int TERRAIN = 0;
+    public static final int DECORATION = 1;
+    public static final int LIGHT = 2;
+
     private static final long[] NANOS = new long[STAGES.length];
     private static final long[] CALLS = new long[STAGES.length];
 
     private GenStats() {}
 
-    static void add(int stage, long nanos) {
+    public static void add(int stage, long nanos) {
         NANOS[stage] += nanos;
         CALLS[stage]++;
     }
