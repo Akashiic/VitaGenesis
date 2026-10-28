@@ -111,3 +111,34 @@ com "VG contorna" já têm solução local no VitaGenesis, que pode ser removida
 - [ ] Gancho para chunks novos antes da população, com `freshChunk` persistente também no `decorate`, faixa de Y no
   contrato e recálculo de heightmap e skylight depois de escrever. Hoje a região recusa Y ≥ 0 e não há sinal de chunk
   novo fora do `generateTerrain`.
+
+## 4. Rodada 2 — Below Core 0.1.0-beta.3 (API 3) e VitaGenesis 0.1.0-beta.2
+
+O Below Core resolveu a checklist da seção 3, exceto três itens recusados com justificativa: luz nas bordas no cliente
+(as flags de borda do ArchaicFix 0.8.0 só existem para a luz do céu, que é 0 abaixo de Y 0; o caso real é coberto
+pela etapa de luz dele), `contractVersion` (um padrão viria do jar do Below Core, não do gerador; o `apiVersion()`
+cobre) e o gancho para Y ≥ 0 (roadmap).
+
+O VitaGenesis adotou a API 3 e removeu os contornos próprios:
+
+| antes (API 2) | agora (API 3) |
+|---|---|
+| fila, flood e orçamento de luz próprios (`DeepLighting`), marcas `Ours`/`Lit` em `Level.VitaGenesis` | etapa de luz do Below Core; fluidos no `onLit`; marca "decorado pelo VitaGenesis" em `getGeneratorData` |
+| terreno escavava todo sólido sem TileEntity | só o preenchimento do Below Core e a pedra base (`isDeepFill`/`isBaseStone`) |
+| `vitagenesis.txt` com as settings | `version()`; o Below Core grava por dimensão e avisa |
+| `ore_clay` fora (precisava do `OreFeature` interno) | `IDeepRegion.placeBlob` |
+| self-test com a fila própria | `BellowAPI.runDeepStages`; costura: chunk salvo com luz pendente é iluminado depois de reiniciar |
+
+Testes desta rodada (todos **PASS**):
+
+| teste | resultado |
+|---|---|
+| `tools/selftest.sh -64` e `-128` (3 fases) | PASS; luz do Below Core igual ao motor vanilla em volta de todas as fontes medidas |
+| controle negativo: `onLit` sem a marca "decorado pelo VitaGenesis" | reprova (a água do "jogador" escorre), como esperado |
+| `tools/clienttest.sh` | PASS: cliente com os blocos, a luz e as faces de líquen do servidor |
+| pack real (Crucible, Below Core beta.3, seed nova) | PASS nas 3 fases: regra de ouro (121 chunks, 0 alterados), retrogen, área nova, verdejante (com `ore_clay`), costura com luz pendente, chunk decorado com o VG desligado, releitura |
+| custo no pack (VG) | terreno 3,5 ms, decoração 1,1 ms, fluidos 0,3 ms por chunk; retrogen 10 ms/chunk no total, chunk novo 43 ms |
+| log do pack | sem erros do VitaGenesis ou do Below Core; só o aviso esperado de dripstone desligado |
+
+Para a produção: `AkashicBellow-0.1.0-beta.3.jar` no servidor **e nos clientes**, `VitaGenesis-0.1.0-beta.2.jar` só no
+servidor, piso decidido antes do primeiro boot.
