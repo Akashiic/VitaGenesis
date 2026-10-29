@@ -352,6 +352,22 @@ public final class ClientSelfTest {
         int lichenCount = 0;
         int lichenDiff = 0;
         int lit = 0;
+        // the server's light now (racy read of the integrated server, for the diagnosis only)
+        int[] now = new int[n];
+        WorldServer server = MinecraftServer.getServer()
+            .worldServerForDimension(0);
+        this.visit(server, t, now, new int[n], new int[n]);
+        int matchNow = 0;
+        List<String> sample = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            if (blocks[i] == t.blocks[i] && light[i] != t.light[i]) {
+                if (light[i] == now[i]) matchNow++;
+                if (sample.size() < 8)
+                    sample.add("#" + i + " client " + light[i] + " snapshot " + t.light[i] + " server now " + now[i]);
+            }
+        }
+        if (!sample.isEmpty())
+            this.out.add(t.name + ": light cells that differ (" + matchNow + " match the server now): " + sample);
         for (int i = 0; i < n; i++) {
             if (blocks[i] != t.blocks[i]) blockDiff++;
             else if (light[i] != t.light[i]) lightDiff++;
