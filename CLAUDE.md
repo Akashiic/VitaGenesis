@@ -8,7 +8,9 @@
 
 ## Projeto
 - VitaGenesis: backport da geração de mundo da 1.18+ para Minecraft 1.7.10 / Forge 10.13.4.1614, para o modpack
-  TEOF 4.1 (servidor Crucible). Primeira parte: as cavernas da camada profunda do Below Core (Y < 0).
+  TEOF 4.1 (servidor Crucible). Primeira parte: a camada profunda do Below Core (Y < 0) inteira (preenchimento,
+  piso, minérios e cavernas). O Below Core é só core/API; o conteúdo abaixo de 0 é do VitaGenesis
+  (`docs/BELOWCORE-HANDOFF.md`).
 - Depende do Below Core (API `com.akashiic.bellow.api`, versão ≥ 3) e usa os blocos do Et Futurum Requiem.
   Só servidor: não adiciona blocos, itens nem pacotes.
 - Regra de ouro: **nada em Y ≥ 0 é alterado** (o mundo acima de 0 já está pré-gerado). Toda escrita passa pela API
@@ -21,6 +23,6 @@
 ## Build e testes
 - Precisa de um checkout do Below Core compilado ao lado (`../BelowCore`, `./gradlew build` lá) ou
   `-Pbellow.dir=<caminho>`. O código compila contra o `-api.jar` do Below Core: só a API pública é visível.
-- `VERSION=0.1.0-beta.2 ./gradlew build` (não há tag git); `./gradlew test` roda os testes unitários.
+- `VERSION=0.1.0-beta.3 ./gradlew build` (não há tag git); `./gradlew test` roda os testes unitários.
 - `tools/selftest.sh [piso] ` (servidor dedicado, 3 fases: bootstrap → full → reload), por exemplo
   `tools/selftest.sh -64` e `tools/selftest.sh -128`.

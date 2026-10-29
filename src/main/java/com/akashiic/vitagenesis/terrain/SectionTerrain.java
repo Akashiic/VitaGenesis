@@ -9,6 +9,7 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 import com.akashiic.bellow.api.BellowAPI;
 import com.akashiic.vitagenesis.CaveBlocks;
+import com.akashiic.vitagenesis.layer.DeepLayer;
 
 /**
  * {@link DeepCaves.Chunk} over the deep sections of a chunk that Below Core has just filled. Writes go straight into
@@ -39,9 +40,8 @@ public final class SectionTerrain implements DeepCaves.Chunk {
         Block b = ebs.getBlockByExtId(lx, y & 15, lz);
         if (b == Blocks.bedrock) return y == this.minY ? OTHER : BEDROCK;
         if (this.veins.get(this.index(lx, y, lz))) return VEIN;
-        // carve only what Below Core filled the layer with: on retrogen, anything else was put there by players or mods
-        int meta = ebs.getExtBlockMetadata(lx, y & 15, lz);
-        return BellowAPI.isDeepFill(b, meta) || BellowAPI.isBaseStone(b, meta) ? FILL : OTHER;
+        // carve only the layer itself (DeepLayer kept anything else: what players or mods put there)
+        return b == DeepLayer.fill || CaveBlocks.isBaseStone(b) ? FILL : OTHER;
     }
 
     @Override

@@ -11,6 +11,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 import com.akashiic.bellow.api.IDeepRegion;
 import com.akashiic.vitagenesis.CaveBlocks;
 import com.akashiic.vitagenesis.FeatureConfig;
+import com.akashiic.vitagenesis.layer.Ores;
 import com.akashiic.vitagenesis.noise.Noises;
 import com.akashiic.vitagenesis.noise.NormalNoise;
 import com.akashiic.vitagenesis.terrain.DeepCaves;
@@ -106,6 +107,13 @@ public final class CaveFeatures {
         return z ^ z >>> 31;
     }
 
+    /** Only the ores of the layer: the cave generator is switched off. */
+    public void decorateOres(IDeepRegion region) {
+        int cx = region.centerChunkX();
+        int cz = region.centerChunkZ();
+        Ores.place(region, salt -> this.random(cx, cz, salt));
+    }
+
     public void decorate(IDeepRegion region, DeepCaves.Settings settings) {
         Level lv = new Level(region, settings.ceiling());
         BiomeMap biomes = new BiomeMap(region);
@@ -151,7 +159,8 @@ public final class CaveFeatures {
             }
         }
 
-        // UNDERGROUND_ORES (Below Core places the ores themselves): underwater magma
+        // UNDERGROUND_ORES: the ores of the layer (1.18 list and modded), underwater magma, ore_clay
+        Ores.place(region, salt -> this.random(cx, cz, salt));
         if (FeatureConfig.underwaterMagma && CaveBlocks.magma != null) {
             Random r = this.random(cx, cz, 3);
             int count = Placement.scaledCount(r, Placement.uniform(r, 44, 52), minY, top);

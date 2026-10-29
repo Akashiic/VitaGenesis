@@ -2,16 +2,21 @@
 
 Backport da geração de mundo do **Minecraft 1.18+** para o **Minecraft 1.7.10** (Forge 10.13.4.1614).
 
-Esta primeira parte traz as **cavernas da 1.18** para a camada profunda do [Below Core](https://github.com/Akashiic/BelowCore)
-(Y < 0), com os blocos do **Et Futurum Requiem**. Em um mundo já explorado, cada chunk antigo recebe o subsolo e as
+Esta primeira parte gera a camada profunda do [Below Core](https://github.com/Akashiic/BelowCore) (Y < 0) inteira,
+como na 1.18: deepslate, piso de bedrock, minérios (também os de outros mods, em deepslate) e as **cavernas da 1.18**,
+com os blocos do **Et Futurum Requiem**. O Below Core é o core e a API (armazenamento, luz, pacotes); o conteúdo é do
+VitaGenesis. Em um mundo já explorado, cada chunk antigo recebe o subsolo e as
 cavernas quando é carregado. **Nada acima de Y 0 é alterado.**
 
-Status: **beta** (`0.1.0-beta.2`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
+Status: **beta** (`0.1.0-beta.3`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## O que gera abaixo de Y 0
 
 | | origem 1.18 | blocos |
 |---|---|---|
+| A camada: preenchimento e piso | `NOISE`, regra de superfície `bedrock_floor` | deepslate (EFR; pedra sem ele), bedrock em gradiente nos 5 blocos do piso |
+| Minérios, tufo e cascalho | `UNDERGROUND_ORES` do overworld | variantes de deepslate do EFR (ferro, ouro, redstone, diamante, lápis, esmeralda nas montanhas, cobre) |
+| Minérios de outros mods (configuráveis) | — | variantes de deepslate do EFR (`moddedDeepslateOres`): draconium, certus quartz e o que for configurado |
 | Cavernas por ruído: queijo (salões), espaguete 2D/3D, macarrão (noodle), pilares | `NoiseRouterData` | ar |
 | Aquíferos: água e lava em níveis próprios, com barreiras; lava em tudo abaixo de piso + 10 | `NoiseBasedAquifer` | água, lava |
 | Túneis e salas | `CaveWorldCarver` (`cave`, `cave_extra_underground`) | ar, lava |
@@ -52,7 +57,9 @@ tem (Below Core e Et Futurum).
    verdejantes e de gotejamento, em `config/etfuturum/experiments.cfg`:
    `B:enableMossAzalea=true` e `B:enableDripstone=true`. Esses blocos passam a ser registrados, então a mesma
    configuração tem de ir **para os clientes também** (servidor e cliente precisam do mesmo conjunto de blocos).
-4. Instale o Below Core (servidor e clientes) e o VitaGenesis (servidor) juntos. Os chunks recebem o subsolo e as
+4. Enquanto o Below Core ainda tiver minérios próprios, desligue-os: `worldgen { B:ores=false }` em
+   `config/akashicbellow.cfg` (os minérios são do VitaGenesis; ligados, saem em dobro).
+5. Instale o Below Core (servidor e clientes) e o VitaGenesis (servidor) juntos. Os chunks recebem o subsolo e as
    cavernas à medida que são carregados; um pré-gerador que carregue os chunks também dispara a geração.
 
 Chunks cujo subsolo foi gerado **sem** o VitaGenesis (por exemplo, se o Below Core rodar antes sozinho) nunca são
@@ -69,6 +76,10 @@ escavados depois: podem ter construções de jogadores. Por isso os dois entram 
 | `caves.fade` | 8 | blocos abaixo do selo em que as cavernas se fecham suavemente (sem teto plano) |
 | `features.geodes` / `dripstoneCaves` / `lushCaves` / `glowLichen` / `underwaterMagma` / `monsterRooms` / `springs` | true | recursos de caverna |
 | `features.flowingFluids` | true | fluidos com lado aberto começam a escorrer |
+| `layer.fillBlock` | auto | bloco da camada (`auto`: deepslate do EFR, ou pedra) |
+| `layer.ores` | true | minérios, tufo e cascalho da 1.18 |
+| `layer.oreCountMultiplier` / `scaleBottomAnchoredCounts` | 1.0 / true | multiplicador de todos os minérios; densidade da 1.18 com pisos diferentes de −64 |
+| `layer.moddedOres` | draconium, certus, certus carregado | minérios de mods: `minério;tamanho;veios por chunk;minY;maxY[;descarte no ar]`, alturas absolutas ou `bottom+N` |
 | `features.lushHumidity` | 0.7 | umidade mínima das cavernas verdejantes (1.18: 0.7) |
 | `features.lushRainfallWeight` | 1.0 | peso da chuva do bioma 1.7.10 de cima na umidade (0 = só o ruído da 1.18) |
 | `features.dripstoneContinentalness` | 0.8 | continentalidade mínima das cavernas de gotejamento (1.18: 0.8) |
@@ -84,7 +95,7 @@ fundo. Auditoria, testes no pack real e a checklist de limitações do Below Cor
 
 ```bash
 (cd ../BelowCore && VERSION=0.1.0-beta.3 ./gradlew build)   # o build usa os jars do Below Core ao lado
-VERSION=0.1.0-beta.2 ./gradlew build                        # jar em build/libs (com testes unitários)
+VERSION=0.1.0-beta.3 ./gradlew build                        # jar em build/libs (com testes unitários)
 tools/selftest.sh -64                                       # servidor dedicado, 3 fases, piso -64
 tools/selftest.sh -128                                      # idem, piso -128
 tools/clienttest.sh                                         # cliente headless (xvfb-run; EGL/Mesa: libegl1 libegl-mesa0 libgles2)

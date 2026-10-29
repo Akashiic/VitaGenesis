@@ -22,6 +22,8 @@ rm -f "$RUN/config/vitagenesis.cfg" # the defaults are what is tested
 set_bellow() {
   [ -f "$BELLOW_CFG" ] || return 0
   sed -i "/^worldgen {/,/^}/ s/B:enabled=.*/B:enabled=$1/" "$BELLOW_CFG"
+  # VitaGenesis places the ores of the layer: Below Core's own off, as long as it still has them
+  sed -i "/^worldgen {/,/^}/ s/B:ores=.*/B:ores=false/" "$BELLOW_CFG"
   sed -i "s/I:minY=.*/I:minY=$FLOOR/" "$BELLOW_CFG"
 }
 # Et Futurum's moss/azalea and dripstone are experiments, off by default: on for the test (the pack decides for itself)

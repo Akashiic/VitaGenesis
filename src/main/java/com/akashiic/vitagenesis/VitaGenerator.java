@@ -12,6 +12,9 @@ import com.akashiic.bellow.api.IDeepGenerator;
 import com.akashiic.bellow.api.IDeepRegion;
 import com.akashiic.vitagenesis.feature.CaveFeatures;
 import com.akashiic.vitagenesis.feature.FluidActivation;
+import com.akashiic.vitagenesis.layer.DeepLayer;
+import com.akashiic.vitagenesis.layer.Ores;
+import com.akashiic.vitagenesis.noise.XoroshiroRandom;
 import com.akashiic.vitagenesis.terrain.CaveNoise;
 import com.akashiic.vitagenesis.terrain.DeepCaves;
 import com.akashiic.vitagenesis.terrain.SectionTerrain;
@@ -30,11 +33,13 @@ final class VitaGenerator implements IDeepGenerator {
     /** Noises per world seed (a server can run dimensions with different seeds). Main thread only. */
     private final Map<Long, CaveNoise> noises = new HashMap<>();
     private final Map<Long, CaveFeatures> features = new HashMap<>();
+    private final Map<Long, XoroshiroRandom.Positional> bedrock = new HashMap<>();
 
     /** Drops the per-seed caches (server stopped: the next world may have another seed, Mystcraft ages add more). */
     void clearCaches() {
         this.noises.clear();
         this.features.clear();
+        this.bedrock.clear();
     }
 
     /**
@@ -56,13 +61,19 @@ final class VitaGenerator implements IDeepGenerator {
             + " seal="
             + s.seal
             + " fade="
-            + s.fade;
+            + s.fade
+            + Ores.describe();
     }
 
     @Override
     public void generateTerrain(Chunk chunk, int minY, long seed, boolean retrogen) {
-        if (!CaveConfig.enabled || retrogen && !CaveConfig.retrogen) return;
         long t = System.nanoTime();
+        // the layer itself, always: VitaGenesis is what the deep layer is made of
+        DeepLayer.generate(chunk, minY, this.bedrock.computeIfAbsent(seed, DeepLayer::bedrockRandom));
+        if (!CaveConfig.enabled || retrogen && !CaveConfig.retrogen) {
+            GenStats.add(GenStats.TERRAIN, System.nanoTime() - t);
+            return;
+        }
         CaveNoise noise = this.noises.computeIfAbsent(seed, CaveNoise::new);
         DeepCaves.generate(
             noise,
@@ -76,8 +87,13 @@ final class VitaGenerator implements IDeepGenerator {
 
     @Override
     public void decorate(IDeepRegion region) {
-        if (!CaveConfig.enabled) return;
         long t = System.nanoTime();
+        if (!CaveConfig.enabled) {
+            this.features.computeIfAbsent(region.seed(), CaveFeatures::new)
+                .decorateOres(region);
+            GenStats.add(GenStats.DECORATION, System.nanoTime() - t);
+            return;
+        }
         try {
             this.features.computeIfAbsent(region.seed(), CaveFeatures::new)
                 .decorate(region, CaveConfig.settings());

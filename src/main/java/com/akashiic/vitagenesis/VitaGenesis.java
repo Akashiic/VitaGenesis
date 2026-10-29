@@ -4,11 +4,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.akashiic.bellow.api.BellowAPI;
+import com.akashiic.vitagenesis.layer.DeepLayer;
+import com.akashiic.vitagenesis.layer.LayerConfig;
+import com.akashiic.vitagenesis.layer.Ores;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 
@@ -39,6 +43,7 @@ public class VitaGenesis {
         try {
             ConfigurationManager.registerConfig(CaveConfig.class);
             ConfigurationManager.registerConfig(FeatureConfig.class);
+            ConfigurationManager.registerConfig(LayerConfig.class);
         } catch (ConfigException e) {
             throw new IllegalStateException(e);
         }
@@ -68,12 +73,19 @@ public class VitaGenesis {
                     + "): update Below Core");
         }
         CaveBlocks.resolve();
+        DeepLayer.resolve();
         BellowAPI.registerGenerator(GENERATOR_ID, this.generator);
     }
 
     @Mod.EventHandler
     public void serverStopped(FMLServerStoppedEvent event) {
         this.generator.clearCaches();
+    }
+
+    @Mod.EventHandler
+    public void serverAboutToStart(FMLServerAboutToStartEvent event) {
+        // every mod registered its ores by now; before the first chunk of the world is generated
+        Ores.resolve();
     }
 
     /** Headless verification: {@code -Dvitagenesis.selftest=true [-Dvitagenesis.selftest.exit=true]}. */

@@ -28,6 +28,7 @@ import com.akashiic.vitagenesis.GenStats;
 import com.akashiic.vitagenesis.VitaGenesis;
 import com.akashiic.vitagenesis.feature.CaveBiomes;
 import com.akashiic.vitagenesis.feature.CaveFeatures;
+import com.akashiic.vitagenesis.layer.DeepLayer;
 
 /**
  * Headless verification on a dedicated server ({@code tools/selftest.sh}), in separate JVMs:
@@ -186,6 +187,7 @@ public final class SelfTest {
         }
         this.seamSetup(world);
         this.notOurs(world);
+        this.emptyLayer(world, minY);
         this.line(GenStats.report() + " (fluids: onLit, per lit chunk; the light stage itself is Below Core's)");
         world.theChunkProviderServer.saveChunks(true, null);
         StringBuilder sums = new StringBuilder();
@@ -242,6 +244,54 @@ public final class SelfTest {
                 + ", after "
                 + after
                 + ")");
+    }
+
+    /**
+     * VitaGenesis makes the layer on its own, whether Below Core still fills it first or hands over empty sections: the
+     * deep layer of one chunk is emptied (as Below Core will hand it over), two blocks a player could have placed are
+     * put in it, and the layer stage runs again. Everything else must be the fill or the 1.18 bedrock floor.
+     */
+    private void emptyLayer(WorldServer world, int minY) {
+        int[] g = { 200, 200 };
+        load(world, g, 0);
+        Chunk c = world.getChunkFromChunkCoords(g[0], g[1]);
+        for (int sy = minY >> 4; sy < 0; sy++) {
+            ExtendedBlockStorage ebs = BellowAPI.getDeepSection(c, sy);
+            for (int i = 0; i < 4096; i++) ebs.func_150818_a(i & 15, i >> 8, i >> 4 & 15, Blocks.air);
+        }
+        BellowAPI.getDeepSection(c, -2)
+            .func_150818_a(5, 2, 5, Blocks.glass); // y -30
+        BellowAPI.getDeepSection(c, minY >> 4)
+            .func_150818_a(7, 1, 7, Blocks.glass); // floor band
+        DeepLayer.generate(c, minY, DeepLayer.bedrockRandom(world.getSeed()));
+        int glass = 0;
+        int other = 0;
+        int bedrock = 0;
+        int floorBroken = 0;
+        for (int y = minY; y < 0; y++) {
+            ExtendedBlockStorage ebs = BellowAPI.getDeepSection(c, y >> 4);
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    Block b = ebs.getBlockByExtId(x, y & 15, z);
+                    if (b == Blocks.glass) glass++;
+                    else if (b == Blocks.bedrock) bedrock++;
+                    else if (b != DeepLayer.fill || ebs.getExtBlockMetadata(x, y & 15, z) != DeepLayer.fillMeta)
+                        other++;
+                    if (y == minY && b != Blocks.bedrock) floorBroken++;
+                }
+            }
+        }
+        // 256 * (1 + 0.8 + 0.6 + 0.4 + 0.2) = 768 bedrock blocks expected
+        this.check(
+            glass == 2 && other == 0 && floorBroken == 0 && bedrock > 650 && bedrock < 880,
+            "empty deep layer made by VitaGenesis: placed blocks kept " + glass
+                + "/2, other blocks "
+                + other
+                + ", floor broken "
+                + floorBroken
+                + ", bedrock "
+                + bedrock
+                + " (~768)");
     }
 
     /**
@@ -515,6 +565,19 @@ public final class SelfTest {
             String lichen = Block.blockRegistry.getNameForObject(CaveBlocks.glowLichen);
             this.check(histogramPrefix(histogram, lichen) > 0, "glow lichen generated");
         }
+        // the ores of the layer are VitaGenesis' (Below Core's own are off in the test): 1.18 places about 25
+        // deepslate diamond and 20 deepslate iron ore blocks per chunk at floor -64, outside the iron veins
+        int chunks = (2 * MEASURED + 1) * (2 * MEASURED + 1);
+        int diamond = histogramPrefix(histogram, "etfuturum:deepslate_diamond_ore");
+        int redstone = histogramPrefix(histogram, "etfuturum:deepslate_redstone_ore");
+        int fill = histogramPrefix(histogram, Block.blockRegistry.getNameForObject(DeepLayer.fill));
+        this.check(
+            diamond > 5 * chunks && diamond < 80 * chunks && redstone > 5 * chunks,
+            "1.18 ores in the layer: " + diamond / chunks
+                + " deepslate diamond and "
+                + redstone / chunks
+                + " deepslate redstone ore per chunk");
+        this.check(fill > 0, "layer made of " + Block.blockRegistry.getNameForObject(DeepLayer.fill));
         return histogram;
     }
 

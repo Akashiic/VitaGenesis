@@ -22,10 +22,9 @@ execução com `BellowAPI.apiVersion()`). Ele compila contra o `-api.jar` do Bel
 
 | etapa do Below Core | VitaGenesis | vizinhança | 1.18 |
 |---|---|---|---|
-| preenche o subsolo (deepslate, piso de bedrock) | — | — | `NOISE` (pedra) |
-| `generateTerrain` | cavernas por ruído, aquíferos, veios de ferro, carvers (§3–§6) | só o chunk | `NOISE`, `CARVERS` |
-| minérios do Below Core (respeitam o ar escavado: `discardChanceOnAirExposure`) | — | 3×3 | `FEATURES`/ores |
-| `decorate` | recursos de caverna (§8) | 3×3 | `FEATURES` |
+| cria as seções de `minY..-1` | — | — | — |
+| `generateTerrain` | a camada (preenchimento e piso de bedrock, `layer/DeepLayer`), cavernas por ruído, aquíferos, veios de ferro, carvers (§3–§6) | só o chunk | `NOISE`, `CARVERS`, `bedrock_floor` |
+| `decorate` | recursos de caverna e minérios no passo `UNDERGROUND_ORES` (§8; `layer/Ores` pelo `placeOre`/`placeBlob` do Below Core) | 3×3 | `FEATURES` |
 | etapa de luz do Below Core, quando os 5×5 estão decorados | — | 5×5 | `LIGHT` |
 | `onLit` | fluidos com lado aberto começam a escorrer (§9) | 5×5 | *fluid ticks* |
 
@@ -41,6 +40,26 @@ ela muda entre sessões (chunks novos não casariam com os antigos nas bordas).
 O estágio de terreno é função pura da semente, da posição do chunk e da configuração. Ele toca só o chunk e escreve
 direto nas seções profundas, então as bordas casam em qualquer ordem de geração (medido: vizinhos concordam 99,3%
 através da borda e 99,4% dentro do chunk).
+
+### 2.1 A camada é do VitaGenesis
+
+O VitaGenesis gera a camada profunda inteira; o Below Core só a guarda, ilumina e envia (`docs/BELOWCORE-HANDOFF.md`).
+No `generateTerrain`, `DeepLayer` escreve o preenchimento (`layer.fillBlock`, `auto` = deepslate do EFR) e o piso
+da 1.18 (`verticalGradient("bedrock_floor", aboveBottom(0), aboveBottom(5))`, com o mesmo `RandomState` posicional da
+1.18) em toda posição livre: ar, o preenchimento, pedra base e bedrock na faixa do piso. Qualquer outro bloco foi
+posto por jogadores ou mods (retrogen) e fica. Assim o mesmo código serve enquanto o Below Core ainda enche a camada
+(reescreve igual) e depois que ele passar a entregar seções vazias; o self-test esvazia a camada de um chunk e confere.
+
+Os minérios (`layer/Ores`) são a lista da 1.18 abaixo de 0, que antes era do Below Core, com a mesma colocação (contagem
+ou raridade, quadrado, altura uniforme ou triangular, filtro de montanha da esmeralda, contagem escalada para pisos
+diferentes de −64) e agora no passo certo da 1.18 (`UNDERGROUND_ORES`, depois dos geodos e das masmorras). Os veios
+passam pelo `IDeepRegion.placeOre`/`placeBlob` do Below Core: pedra vira o minério, deepslate e tufo a variante de
+deepslate do `DeepslateOreRegistry` do Et Futurum. Os minérios de outros mods (`layer.moddedOres`) usam o mesmo
+caminho: o minério original do mod (pelo dicionário de minérios, ignorando a variante do EFR de mesmo nome) vira o
+Deepslate Draconium, Deepslate Certus Quartz etc. do Et Futurum (`modcompat.cfg: moddedDeepslateOres`). Os geradores
+desses mods nunca descem abaixo de 0 (o Below Core bloqueia a geração legada ali); sem isso a camada não teria
+nenhum minério deles. Os padrões partem das taxas dos próprios mods (Draconic Evolution: 2 veios por chunk em Y 2..8,
+aqui nos 16 blocos acima do piso; AE2: 15 aglomerados de 4 em Y ≈ 0..48, aqui ~8 em −32..−1) e são ajustáveis.
 
 ## 3. Pilha de ruído (porte da 1.18)
 

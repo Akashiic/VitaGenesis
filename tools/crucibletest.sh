@@ -46,7 +46,8 @@ run() {
   echo "== phase $phase (rc=$rc)"
   cat "vitagenesis-selftest-$phase.txt" 2>/dev/null || { echo "no report (see $PWD/vitacrucible-$phase.log)"; return 1; }
 }
-set_bellow() { [ -f "$cfg" ] && sed -i "/^worldgen {/,/^}/ s/B:enabled=.*/B:enabled=$1/" "$cfg"; }
+# VitaGenesis places the ores of the layer: Below Core's own off, as long as it still has them
+set_bellow() { [ -f "$cfg" ] && sed -i -e "/^worldgen {/,/^}/ s/B:enabled=.*/B:enabled=$1/" -e "/^worldgen {/,/^}/ s/B:ores=.*/B:ores=false/" "$cfg"; }
 
 # the config file exists after the first launch: create it, then start over from a new world
 if [ ! -f "$cfg" ]; then echo "== first launch (creates the config files; its report is not a result)"; run bootstrap > /dev/null || true; rm -rf -- "$level" vitagenesis-selftest*.txt; fi
