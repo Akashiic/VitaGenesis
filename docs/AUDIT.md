@@ -157,3 +157,26 @@ desligados (`worldgen.ores=false`):
 | pack real (Crucible) | PASS nas 3 fases; minérios de mod em deepslate do Et Futurum: `deepslate_draconium_ore` ~2,5 por chunk, `deepslate_certus_quartz_ore` ~14 por chunk e o carregado (meta 1) ~1,6 nas áreas medidas |
 | custo no pack (VG) | terreno 3,8 ms (com o preenchimento), decoração 2,1 ms (com os minérios), fluidos 0,3 ms por chunk |
 | log do pack | sem erros do VitaGenesis ou do Below Core |
+
+## 6. Rodada 4 — Below Core 0.1.0-beta.4 só core (API 4) e VitaGenesis 0.1.0-beta.4
+
+Conferido no código do Below Core (`df2c840`): saíram o preenchimento e o piso (`DeepTerrain.fill`), a lista e a
+colocação dos minérios (`gen/ore/DeepFeatures`, `DeepFeature`, `HeightProvider`, `Anchor`, `placeFeatures`), as
+configs `deepBlock`/`ores`/`scaleBottomAnchoredCounts`/`oreCountMultiplier` e, na API, `getFillBlock`, `getFillMeta`,
+`isDeepFill`, `isDeepHost` e `isBaseStone` (`apiVersion()` = 4). Ficaram `placeOre`/`placeBlob` com hospedeiros fixos
+(pedra, deepslate do EFR, tufo), a troca da bedrock antiga em Y 0..4 (agora só onde o gerador deixou Y −1 sólido) e um
+fallback sem gerador (`worldgen.provisionalLayer`: pedra sobre bedrock, chunk "não gerado", substituído como retrogen
+quando um gerador aparece; o `DeepLayer` do VitaGenesis trata essa pedra como livre). Nada que o VitaGenesis usa foi
+removido. O VitaGenesis passou a exigir a API 4 (com um Below Core anterior os minérios sairiam em dobro).
+
+| teste | resultado |
+|---|---|
+| `tools/selftest.sh -64` e `-128` | PASS (camada esvaziada refeita: 2/2 blocos mantidos, 0 errados, piso inteiro) |
+| pack real (Crucible, Below Core beta.4) | PASS nas 3 fases; regra de ouro (121 chunks, 0 alterados); 17–23 deepslate de diamante por chunk; Deepslate Draconium, Certus e Charged Certus presentes |
+| `tools/clienttest.sh` | 5 de 6 rodadas PASS com 0 células de luz diferentes; 1 rodada com 59 de 5733 (limite 57), blocos idênticos |
+
+**Aberto (risco baixo):** a rodada de cliente que reprovou não se repetiu em 5 tentativas, na mesma área e com a mesma
+foto do servidor (2024 células iluminadas). A causa provável é o cliente recalcular luz localmente ao receber blocos de
+fluidos que ainda escorrem perto da câmera (o vanilla faz isso no cliente), o caso que a tolerância de 1 % do teste já
+prevê. O teste agora registra, para cada célula diferente, o valor no cliente, na foto e no servidor no momento da
+verificação; a próxima ocorrência mostra se é isso ou um reenvio de luz atrasado do Below Core.
