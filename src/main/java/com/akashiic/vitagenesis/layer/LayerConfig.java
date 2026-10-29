@@ -36,9 +36,26 @@ public class LayerConfig {
         "  size: 1.18 vein size (0..64); count: veins per chunk (fractions allowed);",
         "  minY/maxY: a height (-40) or a height above the floor (bottom+16); uniform between them.",
         "  discardOnAir: chance (0..1) to skip each block touching air (1.18 buried ores use 0.5..1). Default 0.",
-        "Defaults: draconium as rare as Draconic Evolution makes it above 0 (2 veins per chunk) but near the floor;",
-        "certus quartz about as dense per block as Applied Energistics 2 makes it above 0." })
-    @Config.DefaultStringList({ "oreDraconium;4;2;bottom+0;bottom+16", "oreCertusQuartz;4;8;-32;-1",
-        "oreChargedCertusQuartz;4;1;-32;-1" })
+        "Defaults: every ore of the TEOF 4.1 pack Et Futurum has a deepslate variant of, as dense per block as the",
+        "mod that generates the most of it makes it above 0 (measured in the pack: docs/DESIGN.md), over the whole",
+        "layer; draconium near the floor, as Draconic Evolution puts it near bedrock; amber in the upper half.",
+        "Ores of mods that are not installed are skipped." })
+    @Config.DefaultStringList({
+        // Ars Magica 2
+        "oreVinteum;4;8;bottom+0;-1", "oreChimerite;4;10;bottom+0;-1", "oreBlueTopaz;4;8;bottom+0;-1",
+        // Thaumcraft
+        "oreCinnabar;4;9;bottom+0;-1", "oreInfusedAir;4;2;bottom+0;-1", "oreInfusedFire;4;1.5;bottom+0;-1",
+        "oreInfusedWater;4;1.6;bottom+0;-1", "oreInfusedEarth;4;3.5;bottom+0;-1", "oreInfusedOrder;4;2.2;bottom+0;-1",
+        "oreInfusedEntropy;4;1.8;bottom+0;-1", "oreAmber;4;4.7;-32;-1",
+        // Applied Energistics 2, Draconic Evolution
+        "oreCertusQuartz;4;10.6;bottom+0;-1", "oreChargedCertusQuartz;4;1.2;bottom+0;-1",
+        "oreDraconium;4;3;bottom+0;bottom+16",
+        // metals (IC2, Thermal Foundation, Immersive Engineering, Galacticraft, Mekanism, Big Reactors, Industrial
+        // Upgrade, ElectriCraft, ReactorCraft, Forestry, Tinkers')
+        "oreTin;8;27;bottom+0;-1", "oreAluminum;8;21;bottom+0;-1", "oreLead;8;12;bottom+0;-1",
+        "oreNickel;8;10;bottom+0;-1", "oreSilver;8;6;bottom+0;-1", "oreUranium;8;5;bottom+0;-1",
+        "orePlatinum;8;3;bottom+0;-1", "oreThorium;8;2.5;bottom+0;-1", "oreTungsten;8;3;bottom+0;-1",
+        "oreTitanium;8;3;bottom+0;-1", "oreZinc;8;3;bottom+0;-1", "oreMagnesium;8;3;bottom+0;-1",
+        "oreOsmium;8;11;bottom+0;-1" })
     public static String[] moddedOres;
 }

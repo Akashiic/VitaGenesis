@@ -280,6 +280,16 @@ public final class Ores {
 
     /** The ore as its mod registers it, not an Et Futurum deepslate variant registered under the same name. */
     private static ItemStack fromOreDictionary(String name) {
+        // prefer an ore Et Futurum has a deepslate variant of: that variant is what goes into the deepslate
+        java.util.Set<Long> mapped = new java.util.HashSet<>();
+        for (EfrOre o : etFuturumDeepslateMap()) mapped.add((long) Block.getIdFromBlock(o.from) << 4 | o.fromMeta & 15);
+        for (ItemStack s : OreDictionary.getOres(name)) {
+            Block b = s == null ? null : Block.getBlockFromItem(s.getItem());
+            int meta = s == null || s.getItemDamage() == OreDictionary.WILDCARD_VALUE ? 0 : s.getItemDamage();
+            if (b != null && b != Blocks.air && mapped.contains((long) Block.getIdFromBlock(b) << 4 | meta & 15)) {
+                return s;
+            }
+        }
         ItemStack any = null;
         for (ItemStack s : OreDictionary.getOres(name)) {
             if (s == null || Block.getBlockFromItem(s.getItem()) == Blocks.air) continue;
@@ -291,6 +301,73 @@ public final class Ores {
         return any;
     }
 
+    /**
+     * Every ore Et Futurum knows a deepslate variant of ({@code DeepslateOreRegistry.getOreMap()}, read by reflection:
+     * Et Futurum is optional), as {@code "original -> variant [ore dictionary names]"}; empty without Et Futurum.
+     */
+    public static List<String> etFuturumDeepslateOres() {
+        List<String> out = new ArrayList<>();
+        for (EfrOre o : etFuturumDeepslateMap()) {
+            out.add(
+                GameRegistry.findUniqueIdentifierFor(o.from) + ":"
+                    + o.fromMeta
+                    + " -> "
+                    + GameRegistry.findUniqueIdentifierFor(o.to)
+                    + ":"
+                    + o.toMeta
+                    + " "
+                    + o.names);
+        }
+        Collections.sort(out);
+        return out;
+    }
+
+    /** One entry of Et Futurum's {@code DeepslateOreRegistry}: an ore and its deepslate variant. */
+    public static final class EfrOre {
+
+        public final Block from;
+        public final int fromMeta;
+        public final Block to;
+        public final int toMeta;
+        public final List<String> names;
+
+        EfrOre(Block from, int fromMeta, Block to, int toMeta, List<String> names) {
+            this.from = from;
+            this.fromMeta = fromMeta;
+            this.to = to;
+            this.toMeta = toMeta;
+            this.names = names;
+        }
+    }
+
+    /** The entries of Et Futurum's {@code DeepslateOreRegistry}; empty without Et Futurum. */
+    public static List<EfrOre> etFuturumDeepslateMap() {
+        List<EfrOre> out = new ArrayList<>();
+        try {
+            Class<?> registry = Class.forName("ganymedes01.etfuturum.api.DeepslateOreRegistry");
+            Class<?> mapping = Class.forName("ganymedes01.etfuturum.api.mappings.RegistryMapping");
+            java.lang.reflect.Method object = mapping.getMethod("getObject");
+            java.lang.reflect.Method meta = mapping.getMethod("getMeta");
+            java.util.Map<?, ?> map = (java.util.Map<?, ?>) registry.getMethod("getOreMap")
+                .invoke(null);
+            for (java.util.Map.Entry<?, ?> e : map.entrySet()) {
+                Block from = (Block) object.invoke(e.getKey());
+                int fromMeta = (Integer) meta.invoke(e.getKey());
+                Block to = (Block) object.invoke(e.getValue());
+                int toMeta = (Integer) meta.invoke(e.getValue());
+                List<String> names = new ArrayList<>();
+                ItemStack stack = new ItemStack(from, 1, fromMeta);
+                if (stack.getItem() != null) {
+                    for (int id : OreDictionary.getOreIDs(stack)) names.add(OreDictionary.getOreName(id));
+                }
+                out.add(new EfrOre(from, fromMeta, to, toMeta, names));
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            // no Et Futurum, or another version of its API
+        }
+        return out;
+    }
+
     /** Resolves both lists (blocks of every mod are registered by then); called once the server starts. */
     public static synchronized void resolve() {
         vanilla = Collections.unmodifiableList(vanillaList());
@@ -299,6 +376,9 @@ public final class Ores {
         for (Feature f : modded) {
             names.add(f.name + "=" + GameRegistry.findUniqueIdentifierFor(f.block) + ":" + f.meta);
         }
+        List<String> efr = etFuturumDeepslateOres();
+        VitaGenesis.LOG.info("Et Futurum deepslate ores in this pack ({}):", efr.size());
+        for (String line : efr) VitaGenesis.LOG.info("  {}", line);
         VitaGenesis.LOG.info(
             "Deep layer: fill {}:{}, {} ores of 1.18, modded ores {}",
             DeepLayer.fill,
@@ -345,6 +425,28 @@ public final class Ores {
                 region.world()
                     .getWorldChunkManager());
         return biome != null && BiomeDictionary.isBiomeOfType(biome, BiomeDictionary.Type.MOUNTAIN);
+    }
+
+    /**
+     * The configured ores of other mods that this pack has, each with the block it becomes in deepslate (Et Futurum's
+     * variant, or the ore itself), as {@code {name, block registry name, meta}}; for the self test.
+     */
+    public static List<Object[]> moddedTargets() {
+        if (modded == null) resolve();
+        List<Object[]> out = new ArrayList<>();
+        List<EfrOre> map = etFuturumDeepslateMap();
+        for (Feature f : modded) {
+            Block to = f.block;
+            int toMeta = f.meta;
+            for (EfrOre o : map) {
+                if (o.from == f.block && o.fromMeta == f.meta) {
+                    to = o.to;
+                    toMeta = o.toMeta;
+                }
+            }
+            out.add(new Object[] { f.name, Block.blockRegistry.getNameForObject(to), toMeta });
+        }
+        return out;
     }
 
     /** For {@code version()}: what shapes the ores of new chunks. */

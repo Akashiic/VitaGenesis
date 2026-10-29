@@ -29,6 +29,9 @@ import com.akashiic.vitagenesis.VitaGenesis;
 import com.akashiic.vitagenesis.feature.CaveBiomes;
 import com.akashiic.vitagenesis.feature.CaveFeatures;
 import com.akashiic.vitagenesis.layer.DeepLayer;
+import com.akashiic.vitagenesis.layer.Ores;
+
+import cpw.mods.fml.common.registry.GameRegistry;
 
 /**
  * Headless verification on a dedicated server ({@code tools/selftest.sh}), in separate JVMs:
@@ -52,6 +55,7 @@ public final class SelfTest {
     static final int[] AREA_B = { -60, 90 };
     /** Per-chunk checksums of area A at Y >= 0, written by bootstrap, compared after the retrogen. */
     static final String SURFACE_FILE = "vitagenesis-selftest-surface.txt";
+    static final String ORE_SURVEY_FILE = "vitagenesis-ore-survey.txt";
     /** Chunks of area A whose population and that of their neighbours ended in bootstrap. */
     static final int SURFACE_RADIUS = LOADED - 2;
 
@@ -114,6 +118,7 @@ public final class SelfTest {
                     ((IDeepChunk) c).bellow$getGenState() == DeepConstants.GEN_NONE,
                     "area A has no deep layer yet");
                 Files.write(new File(SURFACE_FILE).toPath(), surfaceSums(world).getBytes(StandardCharsets.UTF_8));
+                Files.write(new File(ORE_SURVEY_FILE).toPath(), oreSurvey(world).getBytes(StandardCharsets.UTF_8));
                 return;
             case "full":
                 this.full(world, minY);
@@ -395,6 +400,64 @@ public final class SelfTest {
      * population writes into them). The old bedrock at Y 0..4 may become the deep block (Below Core's documented
      * legacy bedrock replacement): bedrock and deepslate hash the same there.
      */
+    /**
+     * What the pack's own generators put at Y >= 0 of the pre-generated area A, for every ore Et Futurum has a
+     * deepslate variant of: blocks per chunk, the Y range and the mean Y. The defaults of {@code layer.moddedOres}
+     * come from it.
+     */
+    private static String oreSurvey(WorldServer world) {
+        Map<Long, Ores.EfrOre> keys = new java.util.HashMap<>();
+        for (Ores.EfrOre o : Ores.etFuturumDeepslateMap())
+            keys.put((long) Block.getIdFromBlock(o.from) << 4 | o.fromMeta & 15, o);
+        Map<Long, int[]> stats = new TreeMap<>(); // count, minY, maxY, sumY
+        int chunks = 0;
+        for (int dx = -SURFACE_RADIUS; dx <= SURFACE_RADIUS; dx++) {
+            for (int dz = -SURFACE_RADIUS; dz <= SURFACE_RADIUS; dz++) {
+                chunks++;
+                ExtendedBlockStorage[] sections = world.getChunkFromChunkCoords(AREA_A[0] + dx, AREA_A[1] + dz)
+                    .getBlockStorageArray();
+                for (int sy = 0; sy < sections.length; sy++) {
+                    ExtendedBlockStorage ebs = sections[sy];
+                    if (ebs == null) continue;
+                    for (int i = 0; i < 4096; i++) {
+                        int x = i & 15;
+                        int y = i >> 8;
+                        int z = i >> 4 & 15;
+                        Block b = ebs.getBlockByExtId(x, y, z);
+                        long key = (long) Block.getIdFromBlock(b) << 4 | ebs.getExtBlockMetadata(x, y, z) & 15;
+                        if (!keys.containsKey(key)) continue;
+                        int wy = (sy << 4) + y;
+                        int[] st = stats.computeIfAbsent(key, k -> new int[] { 0, 999, -999, 0 });
+                        st[0]++;
+                        st[1] = Math.min(st[1], wy);
+                        st[2] = Math.max(st[2], wy);
+                        st[3] += wy;
+                    }
+                }
+            }
+        }
+        StringBuilder out = new StringBuilder(
+            "# ore, blocks per chunk, minY, maxY, mean Y -> deepslate variant [ore dictionary]; " + chunks
+                + " chunks\n");
+        for (Map.Entry<Long, int[]> e : stats.entrySet()) {
+            Ores.EfrOre o = keys.get(e.getKey());
+            int[] st = e.getValue();
+            out.append(GameRegistry.findUniqueIdentifierFor(o.from))
+                .append(':')
+                .append(o.fromMeta)
+                .append(
+                    String
+                        .format(" %.2f %d %d %.0f -> ", st[0] / (double) chunks, st[1], st[2], st[3] / (double) st[0]))
+                .append(GameRegistry.findUniqueIdentifierFor(o.to))
+                .append(':')
+                .append(o.toMeta)
+                .append(' ')
+                .append(o.names)
+                .append('\n');
+        }
+        return out.toString();
+    }
+
     private static String surfaceSums(WorldServer world) {
         StringBuilder out = new StringBuilder();
         for (int dx = -SURFACE_RADIUS; dx <= SURFACE_RADIUS; dx++) {
@@ -579,6 +642,21 @@ public final class SelfTest {
                 + redstone / chunks
                 + " deepslate redstone ore per chunk");
         this.check(fill > 0, "layer made of " + Block.blockRegistry.getNameForObject(DeepLayer.fill));
+        List<Object[]> modded = Ores.moddedTargets();
+        if (!modded.isEmpty()) {
+            StringBuilder m = new StringBuilder("ores of other mods per chunk:");
+            int missing = 0;
+            for (Object[] t : modded) {
+                String key = t[1] + ((Integer) t[2] == 0 ? "" : ":" + t[2]);
+                Integer n = histogram.get(key);
+                if (n == null) missing++;
+                m.append(String.format(" %s=%.1f", t[0], (n == null ? 0 : n) / (double) chunks));
+            }
+            this.line(m.toString());
+            this.check(
+                missing == 0,
+                "every configured ore of other mods placed: " + (modded.size() - missing) + "/" + modded.size());
+        }
         return histogram;
     }
 

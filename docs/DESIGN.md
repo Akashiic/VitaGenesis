@@ -59,8 +59,36 @@ deepslate do `DeepslateOreRegistry` do Et Futurum. Os minérios de outros mods (
 caminho: o minério original do mod (pelo dicionário de minérios, ignorando a variante do EFR de mesmo nome) vira o
 Deepslate Draconium, Deepslate Certus Quartz etc. do Et Futurum (`modcompat.cfg: moddedDeepslateOres`). Os geradores
 desses mods nunca descem abaixo de 0 (o Below Core bloqueia a geração legada ali); sem isso a camada não teria
-nenhum minério deles. Os padrões partem das taxas dos próprios mods (Draconic Evolution: 2 veios por chunk em Y 2..8,
-aqui nos 16 blocos acima do piso; AE2: 15 aglomerados de 4 em Y ≈ 0..48, aqui ~8 em −32..−1) e são ajustáveis.
+nenhum minério deles.
+
+**Padrões medidos no pack.** A lista de minérios que o Et Futurum converte vem do próprio registro dele
+(`DeepslateOreRegistry`, lido por reflexão e listado no log ao iniciar: 220 entradas no TEOF 4.1, a maioria de planetas,
+Nether e End). A fase `bootstrap` do self-test grava `vitagenesis-ore-survey.txt`: blocos por chunk, faixa de Y e Y
+médio de cada minério original que os geradores do pack põem acima de 0 numa área pré-gerada de 121 chunks. Acima de
+Y ≈ 20 a medição é direta; abaixo disso o Et Futurum já converte tudo para deepslate. O padrão de cada minério é a
+densidade por camada do mod que mais o gera, aplicada à camada inteira (`bottom+0..-1`, escalada pelo piso); a soma de
+todos os mods que geram o mesmo metal (o estanho vem de seis) saturaria a camada. Draconium fica nos 16 blocos acima
+do piso, como o Draconic Evolution o põe junto à bedrock; âmbar, que o Thaumcraft põe raso, em −32..−1.
+
+| minério (variante em deepslate) | mod de referência, blocos/chunk na faixa medida | padrão (veios por chunk, tamanho) |
+|---|---|---|
+| estanho | IC2, 36,6 em Y 20..39 | 27 × 8 |
+| alumínio | Galacticraft, 36,4 em Y 20..44 | 21 × 8 |
+| chumbo | Thermal Foundation, 12,0 em Y 20..34 | 12 × 8 |
+| níquel | ElectriCraft, 19,5 em Y 20..48 | 10 × 8 |
+| ósmio (deepslate do Mekanism) | Mekanism, 30,2 em Y 20..59 | 11 × 8 |
+| prata | ReactorCraft, 8,6 em Y 20..39 | 6 × 8 |
+| urânio | Big Reactors, 10,6 em Y 20..49 | 5 × 8 |
+| platina, tório, tungstênio, titânio, zinco, magnésio | Industrial Upgrade, ~9 em Y 20..68 | 2,5–3 × 8 |
+| certus / certus carregado | AE2, 13,8 / 1,2 em Y 20..69 | 10,6 / 1,2 × 4 |
+| cinábrio, âmbar | Thaumcraft, 7,7 / 10,5 | 9 / 4,7 × 4 |
+| infundidos (ar, fogo, água, terra, ordem, entropia) | Thaumcraft, 1,7–4,9 | 1,5–3,5 × 4 |
+| vinteum, chimerite, blue topaz | Ars Magica 2, 5,6 / 14,4 / 5,3 | 8 / 10 / 8 × 4 |
+| draconium | Draconic Evolution, 2 veios em Y 2..8 | 3 × 4, piso + 0..16 |
+
+Os veios passam pelo `placeOre` do Below Core, de modo que estanho de qualquer mod vira o mesmo deepslate de estanho do
+Et Futurum; o minério original escolhido pelo nome do dicionário é um que o registro do Et Futurum conhece. Tudo é
+ajustável em `layer.moddedOres` e pelo multiplicador geral.
 
 ## 3. Pilha de ruído (porte da 1.18)
 

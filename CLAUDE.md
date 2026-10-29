@@ -23,6 +23,6 @@
 ## Build e testes
 - Precisa de um checkout do Below Core compilado ao lado (`../BelowCore`, `./gradlew build` lá) ou
   `-Pbellow.dir=<caminho>`. O código compila contra o `-api.jar` do Below Core: só a API pública é visível.
-- `VERSION=0.1.0-beta.4 ./gradlew build` (não há tag git); `./gradlew test` roda os testes unitários.
+- `VERSION=0.1.0-beta.5 ./gradlew build` (não há tag git); `./gradlew test` roda os testes unitários.
 - `tools/selftest.sh [piso] ` (servidor dedicado, 3 fases: bootstrap → full → reload), por exemplo
   `tools/selftest.sh -64` e `tools/selftest.sh -128`.

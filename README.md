@@ -8,7 +8,7 @@ com os blocos do **Et Futurum Requiem**. O Below Core é o core e a API (armazen
 VitaGenesis. Em um mundo já explorado, cada chunk antigo recebe o subsolo e as
 cavernas quando é carregado. **Nada acima de Y 0 é alterado.**
 
-Status: **beta** (`0.1.0-beta.4`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
+Status: **beta** (`0.1.0-beta.5`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## O que gera abaixo de Y 0
 
@@ -16,7 +16,7 @@ Status: **beta** (`0.1.0-beta.4`). Arquitetura, decisões e medições: [docs/DE
 |---|---|---|
 | A camada: preenchimento e piso | `NOISE`, regra de superfície `bedrock_floor` | deepslate (EFR; pedra sem ele), bedrock em gradiente nos 5 blocos do piso |
 | Minérios, tufo e cascalho | `UNDERGROUND_ORES` do overworld | variantes de deepslate do EFR (ferro, ouro, redstone, diamante, lápis, esmeralda nas montanhas, cobre) |
-| Minérios de outros mods (configuráveis) | — | variantes de deepslate do EFR (`moddedDeepslateOres`): draconium, certus quartz e o que for configurado |
+| Minérios de outros mods (configuráveis) | — | variantes de deepslate do EFR (`moddedDeepslateOres`): vinteum, chimerite, blue topaz, cinábrio, âmbar e infundidos do Thaumcraft, certus, draconium, estanho, prata, chumbo, níquel, alumínio, urânio, platina, tório, tungstênio, titânio, zinco, magnésio, ósmio |
 | Cavernas por ruído: queijo (salões), espaguete 2D/3D, macarrão (noodle), pilares | `NoiseRouterData` | ar |
 | Aquíferos: água e lava em níveis próprios, com barreiras; lava em tudo abaixo de piso + 10 | `NoiseBasedAquifer` | água, lava |
 | Túneis e salas | `CaveWorldCarver` (`cave`, `cave_extra_underground`) | ar, lava |
@@ -77,7 +77,7 @@ escavados depois: podem ter construções de jogadores. Por isso os dois entram 
 | `layer.fillBlock` | auto | bloco da camada (`auto`: deepslate do EFR, ou pedra) |
 | `layer.ores` | true | minérios, tufo e cascalho da 1.18 |
 | `layer.oreCountMultiplier` / `scaleBottomAnchoredCounts` | 1.0 / true | multiplicador de todos os minérios; densidade da 1.18 com pisos diferentes de −64 |
-| `layer.moddedOres` | draconium, certus, certus carregado | minérios de mods: `minério;tamanho;veios por chunk;minY;maxY[;descarte no ar]`, alturas absolutas ou `bottom+N` |
+| `layer.moddedOres` | todos os do pack com variante de deepslate no EFR (Ars Magica 2, Thaumcraft, AE2, Draconic Evolution, metais, ósmio) | minérios de mods: `minério;tamanho;veios por chunk;minY;maxY[;descarte no ar]`, alturas absolutas ou `bottom+N`; padrões medidos no pack (docs/DESIGN.md §2.1) |
 | `features.lushHumidity` | 0.7 | umidade mínima das cavernas verdejantes (1.18: 0.7) |
 | `features.lushRainfallWeight` | 1.0 | peso da chuva do bioma 1.7.10 de cima na umidade (0 = só o ruído da 1.18) |
 | `features.dripstoneContinentalness` | 0.8 | continentalidade mínima das cavernas de gotejamento (1.18: 0.8) |
@@ -93,7 +93,7 @@ fundo. Auditoria, testes no pack real e a checklist de limitações do Below Cor
 
 ```bash
 (cd ../BelowCore && VERSION=0.1.0-beta.4 ./gradlew build)   # o build usa os jars do Below Core ao lado
-VERSION=0.1.0-beta.4 ./gradlew build                        # jar em build/libs (com testes unitários)
+VERSION=0.1.0-beta.5 ./gradlew build                        # jar em build/libs (com testes unitários)
 tools/selftest.sh -64                                       # servidor dedicado, 3 fases, piso -64
 tools/selftest.sh -128                                      # idem, piso -128
 tools/clienttest.sh                                         # cliente headless (xvfb-run; EGL/Mesa: libegl1 libegl-mesa0 libgles2)
