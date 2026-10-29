@@ -55,7 +55,7 @@ Os minérios (`layer/Ores`) são a lista da 1.18 abaixo de 0, que antes era do B
 ou raridade, quadrado, altura uniforme ou triangular, filtro de montanha da esmeralda, contagem escalada para pisos
 diferentes de −64) e agora no passo certo da 1.18 (`UNDERGROUND_ORES`, depois dos geodos e das masmorras). Os veios
 passam pelo `IDeepRegion.placeOre`/`placeBlob` do Below Core: pedra vira o minério, deepslate e tufo a variante de
-deepslate do `DeepslateOreRegistry` do Et Futurum. Os minérios de outros mods (`layer.moddedOres`) usam o mesmo
+deepslate do `DeepslateOreRegistry` do Et Futurum. Os minérios de outros mods (`layer.packOres` + `layer.extraOres`) usam o mesmo
 caminho: o minério original do mod (pelo dicionário de minérios, ignorando a variante do EFR de mesmo nome) vira o
 Deepslate Draconium, Deepslate Certus Quartz etc. do Et Futurum (`modcompat.cfg: moddedDeepslateOres`). Os geradores
 desses mods nunca descem abaixo de 0 (o Below Core bloqueia a geração legada ali); sem isso a camada não teria
@@ -88,7 +88,7 @@ do piso, como o Draconic Evolution o põe junto à bedrock; âmbar, que o Thaumc
 
 Os veios passam pelo `placeOre` do Below Core, de modo que estanho de qualquer mod vira o mesmo deepslate de estanho do
 Et Futurum; o minério original escolhido pelo nome do dicionário é um que o registro do Et Futurum conhece. Tudo é
-ajustável em `layer.moddedOres` e pelo multiplicador geral.
+ajustável em `layer.packOres` + `layer.extraOres` e pelo multiplicador geral.
 
 ## 3. Pilha de ruído (porte da 1.18)
 

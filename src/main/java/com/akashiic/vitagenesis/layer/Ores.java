@@ -232,7 +232,46 @@ public final class Ores {
         return f;
     }
 
-    /** Parses {@link LayerConfig#moddedOres}; entries that do not resolve are logged and skipped. */
+    /** Parses ore lines ({@link #moddedLines()}); entries that do not resolve are logged and skipped. */
+    /** {@link LayerConfig#packOres}: measured in the TEOF 4.1 pack (docs/DESIGN.md). */
+    static final String[] PACK_ORES = {
+        // Ars Magica 2
+        "oreVinteum;4;8;bottom+0;-1", "oreChimerite;4;10;bottom+0;-1", "oreBlueTopaz;4;8;bottom+0;-1",
+        // Thaumcraft
+        "oreCinnabar;4;9;bottom+0;-1", "oreInfusedAir;4;2;bottom+0;-1", "oreInfusedFire;4;1.5;bottom+0;-1",
+        "oreInfusedWater;4;1.6;bottom+0;-1", "oreInfusedEarth;4;3.5;bottom+0;-1", "oreInfusedOrder;4;2.2;bottom+0;-1",
+        "oreInfusedEntropy;4;1.8;bottom+0;-1", "oreAmber;4;4.7;-32;-1",
+        // Applied Energistics 2, Draconic Evolution
+        "oreCertusQuartz;4;10.6;bottom+0;-1", "oreChargedCertusQuartz;4;1.2;bottom+0;-1",
+        "oreDraconium;4;3;bottom+0;bottom+16",
+        // metals (IC2, Thermal Foundation, Immersive Engineering, Galacticraft, Mekanism, Big Reactors, Industrial
+        // Upgrade, ElectriCraft, ReactorCraft, Forestry, Tinkers')
+        "oreTin;8;27;bottom+0;-1", "oreAluminum;8;21;bottom+0;-1", "oreLead;8;12;bottom+0;-1",
+        "oreNickel;8;10;bottom+0;-1", "oreSilver;8;6;bottom+0;-1", "oreUranium;8;5;bottom+0;-1",
+        "orePlatinum;8;3;bottom+0;-1", "oreThorium;8;2.5;bottom+0;-1", "oreTungsten;8;3;bottom+0;-1",
+        "oreTitanium;8;3;bottom+0;-1", "oreZinc;8;3;bottom+0;-1", "oreMagnesium;8;3;bottom+0;-1",
+        "oreOsmium;8;11;bottom+0;-1" };
+
+    /** The built-in list (when enabled) with the lines of {@link LayerConfig#extraOres} replacing or adding ores. */
+    static String[] moddedLines() {
+        java.util.LinkedHashMap<String, String> lines = new java.util.LinkedHashMap<>();
+        if (LayerConfig.packOres) for (String l : PACK_ORES) lines.put(l.split(";")[0].trim(), l);
+        if (LayerConfig.extraOres != null) {
+            for (String l : LayerConfig.extraOres) {
+                if (l != null && !l.trim()
+                    .isEmpty()) lines.put(l.split(";")[0].trim(), l);
+            }
+        }
+        List<String> out = new ArrayList<>();
+        for (String l : lines.values()) {
+            String[] p = l.split(";");
+            if (p.length >= 3 && p[2].trim()
+                .matches("0+(\\.0+)?")) continue; // count 0: removed
+            out.add(l);
+        }
+        return out.toArray(new String[0]);
+    }
+
     static List<Feature> moddedList(String[] lines) {
         List<Feature> f = new ArrayList<>();
         if (lines == null) return f;
@@ -256,7 +295,7 @@ public final class Ores {
                         meta = stack.getItemDamage() == OreDictionary.WILDCARD_VALUE ? 0 : stack.getItemDamage();
                 }
                 if (block == null || block == Blocks.air) {
-                    VitaGenesis.LOG.info("layer.moddedOres: '{}' is not in this pack, skipped", ore);
+                    VitaGenesis.LOG.info("layer ores: '{}' is not in this pack, skipped", ore);
                     continue;
                 }
                 int size = Integer.parseInt(p[1].trim());
@@ -272,7 +311,7 @@ public final class Ores {
                 }
                 f.add(new Feature(ore, false, block, meta, size, discard, min, max, false, count, count, 0, false));
             } catch (RuntimeException e) {
-                VitaGenesis.LOG.error("layer.moddedOres: cannot use '{}' ({}), skipped", line, e.getMessage());
+                VitaGenesis.LOG.error("layer ores: cannot use '{}' ({}), skipped", line, e.getMessage());
             }
         }
         return f;
@@ -371,7 +410,7 @@ public final class Ores {
     /** Resolves both lists (blocks of every mod are registered by then); called once the server starts. */
     public static synchronized void resolve() {
         vanilla = Collections.unmodifiableList(vanillaList());
-        modded = Collections.unmodifiableList(moddedList(LayerConfig.moddedOres));
+        modded = Collections.unmodifiableList(moddedList(moddedLines()));
         List<String> names = new ArrayList<>();
         for (Feature f : modded) {
             names.add(f.name + "=" + GameRegistry.findUniqueIdentifierFor(f.block) + ":" + f.meta);
@@ -460,10 +499,8 @@ public final class Ores {
             .append(LayerConfig.oreCountMultiplier)
             .append(" scaleBottom=")
             .append(LayerConfig.scaleBottomAnchoredCounts);
-        if (LayerConfig.moddedOres != null) {
-            for (String m : LayerConfig.moddedOres) s.append(" +")
-                .append(m.trim());
-        }
+        for (String m : moddedLines()) s.append(" +")
+            .append(m.trim());
         return s.toString();
     }
 }

@@ -402,7 +402,7 @@ public final class SelfTest {
      */
     /**
      * What the pack's own generators put at Y >= 0 of the pre-generated area A, for every ore Et Futurum has a
-     * deepslate variant of: blocks per chunk, the Y range and the mean Y. The defaults of {@code layer.moddedOres}
+     * deepslate variant of: blocks per chunk, the Y range and the mean Y. The built-in list of {@code layer.packOres}
      * come from it.
      */
     private static String oreSurvey(WorldServer world) {

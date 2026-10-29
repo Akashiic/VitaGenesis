@@ -77,7 +77,8 @@ escavados depois: podem ter construções de jogadores. Por isso os dois entram 
 | `layer.fillBlock` | auto | bloco da camada (`auto`: deepslate do EFR, ou pedra) |
 | `layer.ores` | true | minérios, tufo e cascalho da 1.18 |
 | `layer.oreCountMultiplier` / `scaleBottomAnchoredCounts` | 1.0 / true | multiplicador de todos os minérios; densidade da 1.18 com pisos diferentes de −64 |
-| `layer.moddedOres` | todos os do pack com variante de deepslate no EFR (Ars Magica 2, Thaumcraft, AE2, Draconic Evolution, metais, ósmio) | minérios de mods: `minério;tamanho;veios por chunk;minY;maxY[;descarte no ar]`, alturas absolutas ou `bottom+N`; padrões medidos no pack (docs/DESIGN.md §2.1) |
+| `layer.packOres` | true | lista embutida: todos os minérios do pack com variante de deepslate no EFR (Ars Magica 2, Thaumcraft, AE2, Draconic Evolution, metais, ósmio), densidade medida no pack (docs/DESIGN.md §2.1); atualizações do VitaGenesis trazem os valores novos |
+| `layer.extraOres` | vazio | acrescenta ou substitui minérios: `minério;tamanho;veios por chunk;minY;maxY[;descarte no ar]`, alturas absolutas ou `bottom+N`; mesmo nome de minério substitui o da lista embutida, contagem 0 remove |
 | `features.lushHumidity` | 0.7 | umidade mínima das cavernas verdejantes (1.18: 0.7) |
 | `features.lushRainfallWeight` | 1.0 | peso da chuva do bioma 1.7.10 de cima na umidade (0 = só o ruído da 1.18) |
 | `features.dripstoneContinentalness` | 0.8 | continentalidade mínima das cavernas de gotejamento (1.18: 0.8) |
