@@ -180,3 +180,22 @@ foto do servidor (2024 células iluminadas). A causa provável é o cliente reca
 fluidos que ainda escorrem perto da câmera (o vanilla faz isso no cliente), o caso que a tolerância de 1 % do teste já
 prevê. O teste agora registra, para cada célula diferente, o valor no cliente, na foto e no servidor no momento da
 verificação; a próxima ocorrência mostra se é isso ou um reenvio de luz atrasado do Below Core.
+
+## 7. Rodada 5 — minérios de mod do pack (0.1.0-beta.5)
+
+Todos os minérios que o Et Futurum converte para deepslate e que os mods do TEOF 4.1 geram no overworld entram na camada
+(lista embutida `layer.packOres`, densidades medidas no pack: `docs/DESIGN.md` §2.1). Teste no pack real com a config
+de uma versão anterior no lugar (a chave antiga é ignorada, a lista embutida vale): **PASS nas 3 fases**, os 27
+minérios presentes nas 3 áreas medidas. Blocos por chunk (piso −64), medido contra o alvo:
+
+| minério | medido | alvo | | minério | medido | alvo |
+|---|---|---|---|---|---|---|
+| estanho | 105–132 | ~117 | | certus / carregado | 14–19 / 1,4–2,2 | ~18 / ~2 |
+| alumínio | 82–100 | ~93 | | cinábrio | 12–17 | ~16 |
+| chumbo | 47–57 | ~51 | | infundidos | 1,9–5,9 | 2,6–6 |
+| ósmio | 41–53 | ~48 | | âmbar | 6,8–8,3 | ~8 |
+| níquel | 38–49 | ~43 | | vinteum / chimerite / blue topaz | 11–14 / 14–17 / 11–15 | ~14 / ~17 / ~14 |
+| prata | 23–29 | ~27 | | draconium | 3,6–4,5 | (DE: ~6 em Y 2..8) |
+| urânio | 19–25 | ~23 | | platina, tório, tungstênio, titânio, zinco, magnésio | 10–15 | ~12 |
+
+Custo da decoração com todos os minérios: 2,6 ms por chunk no pack (antes 2,1). `tools/selftest.sh -64`: PASS.
