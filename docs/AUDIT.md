@@ -142,3 +142,18 @@ Testes desta rodada (todos **PASS**):
 
 Para a produção: `AkashicBellow-0.1.0-beta.3.jar` no servidor **e nos clientes**, `VitaGenesis-0.1.0-beta.2.jar` só no
 servidor, piso decidido antes do primeiro boot.
+
+## 5. Rodada 3 — VitaGenesis gera a camada inteira (0.1.0-beta.3)
+
+O VitaGenesis passou a gerar o preenchimento, o piso de bedrock e os minérios (os da 1.18 e os de outros mods); o
+Below Core fica como core/API (`docs/BELOWCORE-HANDOFF.md`). Testado com o Below Core beta.3 e os minérios dele
+desligados (`worldgen.ores=false`):
+
+| teste | resultado |
+|---|---|
+| `tools/selftest.sh -64` e `-128`, `tools/clienttest.sh` | PASS |
+| camada esvaziada (como o Below Core entregará depois da remoção) refeita pelo VitaGenesis | PASS: blocos postos mantidos 2/2, nenhum bloco errado, piso inteiro, 756–778 bedrock (esperado ~768) |
+| densidade dos minérios da 1.18 (agora do VitaGenesis) | 19–27 deepslate de diamante por chunk (antes, pelo Below Core, ~24) |
+| pack real (Crucible) | PASS nas 3 fases; minérios de mod em deepslate do Et Futurum: `deepslate_draconium_ore` ~2,5 por chunk, `deepslate_certus_quartz_ore` ~14 por chunk e o carregado (meta 1) ~1,6 nas áreas medidas |
+| custo no pack (VG) | terreno 3,8 ms (com o preenchimento), decoração 2,1 ms (com os minérios), fluidos 0,3 ms por chunk |
+| log do pack | sem erros do VitaGenesis ou do Below Core |
