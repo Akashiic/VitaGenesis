@@ -36,7 +36,7 @@ public class VitaGenesis {
     private final VitaGenerator generator = new VitaGenerator();
 
     /** Below Core API with deep generators. */
-    static final int REQUIRED_BELLOW_API = 3;
+    static final int REQUIRED_BELLOW_API = 4;
     public static final String GENERATOR_ID = MODID + ":caves";
 
     static {

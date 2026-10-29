@@ -16,7 +16,7 @@ aceita `minY..-1`. As cavernas ainda se fecham antes de Y 0 (§4.4), então nunc
 
 ## 2. Integração com o Below Core
 
-O VitaGenesis é um `IDeepGenerator` registrado em `BellowAPI.registerGenerator` (API ≥ 3, conferida em tempo de
+O VitaGenesis é um `IDeepGenerator` registrado em `BellowAPI.registerGenerator` (API ≥ 4, conferida em tempo de
 execução com `BellowAPI.apiVersion()`). Ele compila contra o `-api.jar` do Below Core: nada fora do pacote
 `com.akashiic.bellow.api` fica visível. A ordem por chunk espelha a 1.18 (ruído e carvers, depois features):
 
@@ -47,8 +47,9 @@ O VitaGenesis gera a camada profunda inteira; o Below Core só a guarda, ilumina
 No `generateTerrain`, `DeepLayer` escreve o preenchimento (`layer.fillBlock`, `auto` = deepslate do EFR) e o piso
 da 1.18 (`verticalGradient("bedrock_floor", aboveBottom(0), aboveBottom(5))`, com o mesmo `RandomState` posicional da
 1.18) em toda posição livre: ar, o preenchimento, pedra base e bedrock na faixa do piso. Qualquer outro bloco foi
-posto por jogadores ou mods (retrogen) e fica. Assim o mesmo código serve enquanto o Below Core ainda enche a camada
-(reescreve igual) e depois que ele passar a entregar seções vazias; o self-test esvazia a camada de um chunk e confere.
+posto por jogadores ou mods (retrogen) e fica. O Below Core (API 4) entrega as seções vazias, ou com a camada
+provisória de pedra dele num chunk feito quando nenhum gerador estava instalado, que é substituída; o self-test
+esvazia a camada de um chunk e confere.
 
 Os minérios (`layer/Ores`) são a lista da 1.18 abaixo de 0, que antes era do Below Core, com a mesma colocação (contagem
 ou raridade, quadrado, altura uniforme ou triangular, filtro de montanha da esmeralda, contagem escalada para pisos

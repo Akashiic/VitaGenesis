@@ -6,12 +6,12 @@ import com.gtnewhorizon.gtnhlib.config.Config;
 @Config(modid = VitaGenesis.MODID, category = "layer")
 @Config.Comment({
     "The deep layer itself (Y < 0): what it is made of, its bedrock floor and its ores. VitaGenesis generates",
-    "the whole layer; Below Core only stores it. Changes apply to chunks generated afterwards.",
-    "While Below Core still places ores of its own, set worldgen.ores=false in config/akashicbellow.cfg." })
+    "the whole layer; Below Core only stores it. Changes apply to chunks generated afterwards." })
 public class LayerConfig {
 
     @Config.Comment({ "Block that fills the deep layer, as modid:name[:meta].",
-        "'auto' = etfuturum:deepslate when Et Futurum Requiem provides it, otherwise minecraft:stone." })
+        "'auto' = etfuturum:deepslate when Et Futurum Requiem provides it, otherwise minecraft:stone.",
+        "Ores replace only stone, Et Futurum's deepslate and tuff: in another fill block no ore is placed." })
     @Config.DefaultString("auto")
     public static String fillBlock;
 

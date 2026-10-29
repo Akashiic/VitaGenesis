@@ -19,8 +19,9 @@ import cpw.mods.fml.common.registry.GameRegistry;
  * ({@code verticalGradient("bedrock_floor", aboveBottom(0), aboveBottom(5))}). Chunk-local, a pure function of the
  * seed and the position.
  * <p>
- * Only free positions are written: air, the fill and the base stone (what Below Core filled the layer with, while it
- * still does), and bedrock in the floor band. Anything else was put there by players or mods (a chunk saved before
+ * Only free positions are written: air, the fill and the base stone (Below Core's provisional stone layer, made while
+ * no generator was installed, included), and bedrock in the floor band. Anything else was put there by players or mods
+ * (a chunk saved before
  * the deep layer existed may already hold blocks below 0) and is kept.
  */
 public final class DeepLayer {

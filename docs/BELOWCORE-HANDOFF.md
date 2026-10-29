@@ -1,5 +1,8 @@
 # Below Core só como core: o que sai e o que fica
 
+**Status:** feito no Below Core 0.1.0-beta.4 (API 4, commit `df2c840`), conferido pelo VitaGenesis 0.1.0-beta.4
+(`docs/AUDIT.md` §6). A lista abaixo fica como registro.
+
 A partir do VitaGenesis 0.1.0-beta.3, o VitaGenesis gera **todo** o conteúdo da camada profunda: o bloco de
 preenchimento, o piso de bedrock da 1.18, os minérios da 1.18 (com tufo e cascalho) e os minérios de outros mods nas
 variantes de deepslate do Et Futurum, além das cavernas e dos recursos que ele já gerava. O Below Core passa a ser só o

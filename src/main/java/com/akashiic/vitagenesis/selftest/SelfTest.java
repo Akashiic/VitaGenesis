@@ -247,7 +247,8 @@ public final class SelfTest {
     }
 
     /**
-     * VitaGenesis makes the layer on its own, whether Below Core still fills it first or hands over empty sections: the
+     * VitaGenesis makes the layer on its own from what Below Core hands over (empty sections, or its provisional
+     * stone): the
      * deep layer of one chunk is emptied (as Below Core will hand it over), two blocks a player could have placed are
      * put in it, and the layer stage runs again. Everything else must be the fill or the 1.18 bedrock floor.
      */

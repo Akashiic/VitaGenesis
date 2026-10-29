@@ -8,7 +8,7 @@ com os blocos do **Et Futurum Requiem**. O Below Core é o core e a API (armazen
 VitaGenesis. Em um mundo já explorado, cada chunk antigo recebe o subsolo e as
 cavernas quando é carregado. **Nada acima de Y 0 é alterado.**
 
-Status: **beta** (`0.1.0-beta.3`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
+Status: **beta** (`0.1.0-beta.4`). Arquitetura, decisões e medições: [docs/DESIGN.md](docs/DESIGN.md).
 
 ## O que gera abaixo de Y 0
 
@@ -40,7 +40,7 @@ cavernas são gerados.
 
 | | versão |
 |---|---|
-| Below Core | API ≥ 3 (`0.1.0-beta.3` ou mais novo) — obrigatório |
+| Below Core | API ≥ 4 (`0.1.0-beta.4` ou mais novo: só o core, sem conteúdo próprio) — obrigatório |
 | Et Futurum Requiem | 2.6.59-GTNH testado — recomendado (sem ele: só cavernas, aquíferos, túneis e masmorras) |
 | GTNHLib | 0.11.40+ |
 
@@ -57,9 +57,7 @@ tem (Below Core e Et Futurum).
    verdejantes e de gotejamento, em `config/etfuturum/experiments.cfg`:
    `B:enableMossAzalea=true` e `B:enableDripstone=true`. Esses blocos passam a ser registrados, então a mesma
    configuração tem de ir **para os clientes também** (servidor e cliente precisam do mesmo conjunto de blocos).
-4. Enquanto o Below Core ainda tiver minérios próprios, desligue-os: `worldgen { B:ores=false }` em
-   `config/akashicbellow.cfg` (os minérios são do VitaGenesis; ligados, saem em dobro).
-5. Instale o Below Core (servidor e clientes) e o VitaGenesis (servidor) juntos. Os chunks recebem o subsolo e as
+4. Instale o Below Core (servidor e clientes) e o VitaGenesis (servidor) juntos. Os chunks recebem o subsolo e as
    cavernas à medida que são carregados; um pré-gerador que carregue os chunks também dispara a geração.
 
 Chunks cujo subsolo foi gerado **sem** o VitaGenesis (por exemplo, se o Below Core rodar antes sozinho) nunca são
@@ -94,8 +92,8 @@ fundo. Auditoria, testes no pack real e a checklist de limitações do Below Cor
 ## Compilar e testar
 
 ```bash
-(cd ../BelowCore && VERSION=0.1.0-beta.3 ./gradlew build)   # o build usa os jars do Below Core ao lado
-VERSION=0.1.0-beta.3 ./gradlew build                        # jar em build/libs (com testes unitários)
+(cd ../BelowCore && VERSION=0.1.0-beta.4 ./gradlew build)   # o build usa os jars do Below Core ao lado
+VERSION=0.1.0-beta.4 ./gradlew build                        # jar em build/libs (com testes unitários)
 tools/selftest.sh -64                                       # servidor dedicado, 3 fases, piso -64
 tools/selftest.sh -128                                      # idem, piso -128
 tools/clienttest.sh                                         # cliente headless (xvfb-run; EGL/Mesa: libegl1 libegl-mesa0 libgles2)
